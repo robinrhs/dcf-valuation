@@ -48,6 +48,27 @@ def cagr(first: float, last: float, periods: int) -> float | None:
     return (last / first) ** (1 / periods) - 1
 
 
+def historical_ufcf(years: list[FiscalYearData], tax_rate: float) -> list[float | None]:
+    """Reported-basis unlevered FCF: EBIT * (1 - t) + D&A - capex - dNWC.
+
+    Same definition as the projection, so history and forecast can be compared directly.
+    The first year has no prior NWC (None), as does any year with missing EBIT.
+    """
+    result: list[float | None] = [None]
+    for prev, cur in zip(years, years[1:], strict=False):
+        if cur.ebit is None:
+            result.append(None)
+            continue
+        delta_nwc = cur.net_working_capital - prev.net_working_capital
+        result.append(
+            cur.ebit * (1 - tax_rate)
+            + (cur.depreciation_amortization or 0.0)
+            - (cur.capex or 0.0)
+            - delta_nwc
+        )
+    return result
+
+
 def revenue_growth_rates(years: list[FiscalYearData]) -> list[float | None]:
     """Year-over-year revenue growth; the first year has no prior year (None)."""
     rates: list[float | None] = [None]
