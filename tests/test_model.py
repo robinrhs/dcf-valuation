@@ -30,7 +30,9 @@ def quote(assumptions):
 def test_yaml_overrides_merge_onto_defaults(assumptions):
     assert assumptions.market.price == 30.0
     assert assumptions.scenarios["base"].exit_multiple == 11.0
-    assert assumptions.scenarios["bull"].revenue_growth_shift == 0.03  # from defaults
+    # User scenarios replace the default set: no default bull shift leaks in.
+    assert assumptions.scenarios["bull"].revenue_growth_shift == 0.0
+    assert assumptions.wacc.equity_risk_premium == 0.042  # untouched default
     assert assumptions.wacc.cost_of_debt == pytest.approx(
         assumptions.wacc.risk_free_rate + assumptions.wacc.credit_spread
     )

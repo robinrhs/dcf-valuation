@@ -1,7 +1,8 @@
 # Default assumptions for dcf-valuation.
 #
 # Every value can be overridden in your own YAML file (passed with --config); only the
-# keys you set are replaced, everything else falls back to this file.
+# keys you set are replaced, everything else falls back to this file. Exception: if your
+# file has a "scenarios" section, it replaces the scenarios below completely.
 # Rates are decimals: 0.05 = 5%. "null" means "derive from the company's history" or
 # "fetch from the market data provider".
 #

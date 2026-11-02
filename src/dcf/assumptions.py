@@ -116,11 +116,19 @@ def assumptions_from_dict(data: dict) -> Assumptions:
 
 
 def load_assumptions(path: str | Path | None = None, overrides: dict | None = None) -> Assumptions:
-    """Defaults <- user YAML file <- programmatic overrides (e.g. from CLI flags)."""
+    """Defaults <- user YAML file <- programmatic overrides (e.g. from CLI flags).
+
+    Everything is deep-merged key by key, except ``scenarios``: if the user file defines
+    scenarios, they replace the default set completely, so no default bull/bear shift can
+    silently leak into a company-specific case.
+    """
     data = default_assumptions_dict()
     if path is not None:
         with open(path, encoding="utf-8") as handle:
-            data = deep_merge(data, yaml.safe_load(handle) or {})
+            user = yaml.safe_load(handle) or {}
+        data = deep_merge(data, user)
+        if "scenarios" in user:
+            data["scenarios"] = copy.deepcopy(user["scenarios"])
     if overrides:
         data = deep_merge(data, overrides)
     return assumptions_from_dict(data)
