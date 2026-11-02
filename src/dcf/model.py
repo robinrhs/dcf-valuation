@@ -40,6 +40,10 @@ from dcf.xbrl import (
 # this, something is off (e.g. it covers only one share class): fall back to the average.
 MAX_SHARE_COUNT_GAP = 0.25
 
+# Below this gap between WACC and terminal growth the Gordon TV explodes: 1 / (WACC - g)
+# doubles when the gap halves, so small input changes swing the value per share.
+MIN_WACC_GROWTH_SPREAD = 0.02
+
 
 @dataclass(frozen=True)
 class CompanyData:
@@ -110,7 +114,9 @@ def select_share_count(company: CompanyData, override: float | None) -> tuple[fl
     basic weighted average). The fiscal-year weighted average alone lags buybacks and
     issuance, so it is only the fallback.
     """
-    if override:
+    if override is not None:
+        if override <= 0:
+            raise ValueError(f"market.diluted_shares must be positive, got {override}")
         return override, "manual override (market.diluted_shares)"
     latest = company.latest
     diluted, basic = latest.diluted_shares, latest.basic_shares
@@ -225,6 +231,26 @@ def terminal_warnings(
     return messages
 
 
+def growth_warnings(terminal_growth: float, wacc: float, risk_free_rate: float) -> list[str]:
+    """Flags for a terminal growth rate that is implausibly high or too close to the WACC."""
+    messages: list[str] = []
+    if terminal_growth > risk_free_rate:
+        # The long-term risk-free rate is a common ceiling for perpetual nominal growth:
+        # no firm can outgrow the whole economy forever.
+        messages.append(
+            f"Terminal growth ({terminal_growth:.2%}) is above the risk-free rate "
+            f"({risk_free_rate:.2%}), a common ceiling for perpetual nominal growth"
+        )
+    spread = wacc - terminal_growth
+    if spread < MIN_WACC_GROWTH_SPREAD:
+        messages.append(
+            f"WACC - g is only {spread * 100:.2f}pp: the Gordon TV multiplies UFCF_N by "
+            f"{(1 + terminal_growth) / spread:.0f}x and reacts very strongly to small changes "
+            "in WACC or g"
+        )
+    return messages
+
+
 def run_dcf(
     company: CompanyData,
     quote: MarketQuote,
@@ -290,6 +316,14 @@ def run_dcf(
         f"FY{company.latest.fiscal_year}: no XBRL value for {item} (treated as 0 where used)"
         for item in missing_items(company.latest)
     ]
+    if history.years_used < settings.history_lookback:
+        warnings.append(
+            f"Only {history.years_used} fiscal years available: historical averages use "
+            f"{history.years_used}, not history_lookback = {settings.history_lookback}"
+        )
+    warnings.extend(
+        growth_warnings(scenario.terminal_growth, wacc.wacc, assumptions.wacc.risk_free_rate)
+    )
     warnings.extend(terminal_warnings(final.ufcf, final.ebitda, checks, wacc.wacc))
 
     return DcfResult(

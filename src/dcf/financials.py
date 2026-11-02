@@ -138,7 +138,10 @@ def summarize(years: list[FiscalYearData], lookback: int = 3) -> HistoricalSumma
     """
     if not years:
         raise ValueError("No fiscal years available to summarise")
-    window = years[-lookback:]
+    if isinstance(lookback, bool) or not isinstance(lookback, int) or lookback < 2:
+        # years[-0:] would silently return every year, and one year has no growth period.
+        raise ValueError(f"history_lookback must be a whole number >= 2, got {lookback!r}")
+    window = years[-lookback:]  # fewer years available -> all of them (see years_used)
     last = window[-1]
     return HistoricalSummary(
         last_fiscal_year=last.fiscal_year,

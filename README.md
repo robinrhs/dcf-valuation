@@ -341,6 +341,12 @@ Defaults live in [`src/dcf/defaults.yaml`](src/dcf/defaults.yaml). Override any 
 your own YAML (`--config`). Market inputs are **snapshots that go stale and must be
 updated** before you rely on the output.
 
+The loader rejects unknown keys, values of the wrong type (for example
+`terminal_growth: "abc"`) and impossible or typo-like values with a message that names the
+key: a tax rate outside 0-1, a non-positive exit multiple, rates, growth or margins of 1 or
+more in absolute terms (`9` instead of `0.09`), D&A or capex shares outside 0-1,
+`diluted_shares <= 0` and `history_lookback < 2`.
+
 | Input | Default | Source / date |
 |---|---|---|
 | Risk-free rate | 4.98% | 10-year US Treasury yield, FRED series DGS10, 2026-10-29 |
@@ -358,7 +364,9 @@ updated** before you rely on the output.
 - **Terminal value dominates.** In the runs above (all three MSFT scenarios and the demo),
   72-88% of EV comes from the TV, so the result is mainly a statement about WACC, `g` and
   the exit multiple. The explicit years still matter, because the terminal-year cash flow
-  and EBITDA they produce are what the TV is built on.
+  and EBITDA they produce are what the TV is built on. The report warns when terminal
+  growth is above the risk-free rate or less than 2pp below the WACC, where the Gordon TV
+  becomes extremely sensitive.
 - **Equity bridge is simplified.** Finance leases are included (see "Leases"), operating
   leases deliberately stay in EBIT as rent. Minority interests, preferred stock, pension
   deficits, equity-method investments and long-term investment portfolios are *not*
