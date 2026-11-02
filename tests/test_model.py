@@ -126,3 +126,30 @@ def test_provider_quote_is_validated_too():
         resolve_quote("EXMPL", StaticProvider(price=0.0, beta=1.0))
     with pytest.raises(ValueError, match="plausible"):
         resolve_quote("EXMPL", StaticProvider(price=10.0, beta=float("nan")))
+
+
+def test_negative_terminal_fcf_gives_na_cross_checks_and_warning(company, quote, tmp_path):
+    # Thin margin plus heavy capex: final-year UFCF turns negative.
+    cfg = tmp_path / "loss.yaml"
+    cfg.write_text(
+        "scenarios:\n  base:\n    ebit_margin_target: 0.02\n    capex_pct_revenue_target: 0.15\n"
+    )
+    result = run_dcf(company, quote, load_assumptions(cfg), with_sensitivity=False)
+    assert result.projection[-1].ufcf < 0
+    assert result.checks.implied_perpetual_growth is None
+    assert any("Final-year FCF is not positive" in w for w in result.warnings)
+
+
+def test_warns_when_terminal_roic_is_below_wacc(company, quote, tmp_path):
+    # Capex far above D&A with a modest margin: lots of reinvestment for little growth.
+    cfg = tmp_path / "low_roic.yaml"
+    cfg.write_text(
+        "scenarios:\n  base:\n    capex_pct_revenue_target: 0.12\n    terminal_growth: 0.02\n"
+    )
+    result = run_dcf(company, quote, load_assumptions(cfg), with_sensitivity=False)
+    roic = result.checks.implied_terminal_roic
+    assert roic is not None and roic < result.wacc.wacc
+    assert any("below the WACC" in w for w in result.warnings)
+    # The default example case earns well above its WACC on new capital: no warning.
+    base = run_dcf(company, quote, load_assumptions(CONFIG), with_sensitivity=False)
+    assert not any("below the WACC" in w for w in base.warnings)

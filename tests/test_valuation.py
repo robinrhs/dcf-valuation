@@ -126,3 +126,16 @@ def test_same_ev_when_exit_multiple_equals_implied_multiple():
 def test_implied_terminal_roic():
     row = flat_projection()[-1]  # NOPAT 120, reinvestment 50 - 30 = 20 -> rate 1/6
     assert implied_terminal_roic(row, 0.02) == pytest.approx(0.02 * 6)
+
+
+def test_cross_checks_are_undefined_for_negative_terminal_year():
+    assert implied_exit_multiple(1_000.0, -50.0, 0.09, mid_year=True) is None
+    assert implied_exit_multiple(-1_000.0, 50.0, 0.09, mid_year=False) is None
+    assert implied_perpetual_growth(1_000.0, -20.0, 0.09, mid_year=True) is None
+    assert implied_perpetual_growth(-1_000.0, 20.0, 0.09, mid_year=False) is None
+
+
+def test_implied_terminal_roic_none_without_net_reinvestment():
+    row = flat_projection()[-1]
+    no_reinvestment = ProjectionYear(**{**row.__dict__, "capex": 30.0})  # capex = D&A
+    assert implied_terminal_roic(no_reinvestment, 0.02) is None

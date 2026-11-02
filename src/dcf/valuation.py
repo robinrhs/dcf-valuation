@@ -90,23 +90,33 @@ def exit_multiple_terminal_value(final_ebitda: float, multiple: float) -> float:
 
 def implied_exit_multiple(
     gordon_tv: float, final_ebitda: float, wacc: float, mid_year: bool
-) -> float:
+) -> float | None:
     """EV/EBITDA multiple that the Gordon TV implies at the end of year N.
 
     Under the mid-year convention the Gordon TV is discounted half a year less, so its
     end-of-year-N equivalent is TV * (1 + WACC)^0.5.
+    Returns None if EBITDA_N or the Gordon TV is not positive: a multiple of a negative
+    number has no economic meaning.
     """
+    if final_ebitda <= 0 or gordon_tv <= 0:
+        return None
     tv_at_n = gordon_tv * (1 + wacc) ** 0.5 if mid_year else gordon_tv
     return tv_at_n / final_ebitda
 
 
 def implied_perpetual_growth(
     exit_tv: float, final_fcf: float, wacc: float, mid_year: bool
-) -> float:
+) -> float | None:
     """Perpetual growth rate that would make the Gordon TV equal the exit-multiple TV.
 
     Solve TV = FCF * (1 + g) / (WACC - g) for g:  g = (TV * WACC - FCF) / (TV + FCF).
+    Under the mid-year convention the Gordon TV sits half a year earlier than the exit
+    TV, so the exit TV is first moved to that date: TV / (1 + WACC)^0.5.
+    Returns None if UFCF_N or the exit TV is not positive: no growth rate turns a negative
+    cash flow into a positive sale price.
     """
+    if final_fcf <= 0 or exit_tv <= 0:
+        return None
     tv = exit_tv / (1 + wacc) ** 0.5 if mid_year else exit_tv
     return (tv * wacc - final_fcf) / (tv + final_fcf)
 

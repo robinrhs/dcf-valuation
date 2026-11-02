@@ -41,8 +41,8 @@ class CompanyData:
 
 @dataclass(frozen=True)
 class CrossChecks:
-    implied_exit_multiple: float  # EV/EBITDA implied by the Gordon TV
-    implied_perpetual_growth: float  # growth implied by the exit-multiple TV
+    implied_exit_multiple: float | None  # EV/EBITDA implied by the Gordon TV
+    implied_perpetual_growth: float | None  # growth implied by the exit-multiple TV
     implied_terminal_roic: float | None
 
 
@@ -133,6 +133,29 @@ def gordon_value_per_share(
     return value_gordon(rows, wacc, terminal_growth, bridge, mid_year).value_per_share
 
 
+def terminal_warnings(
+    final_ufcf: float, final_ebitda: float, checks: CrossChecks, wacc: float
+) -> list[str]:
+    """Flags for a terminal year that the TV formulas cannot handle sensibly."""
+    messages: list[str] = []
+    if final_ufcf <= 0:
+        messages.append(
+            "Final-year FCF is not positive: the Gordon terminal value, the implied growth "
+            "cross-check and the TV share of EV are meaningless"
+        )
+    if final_ebitda <= 0:
+        messages.append("Final-year EBITDA is not positive: the exit-multiple TV is meaningless")
+    roic = checks.implied_terminal_roic
+    if roic is not None and roic < wacc:
+        # g = reinvestment rate x ROIC. If new capital earns less than it costs, every
+        # extra point of terminal growth destroys value instead of creating it.
+        messages.append(
+            f"Implied return on new capital ({roic:.1%}) is below the WACC ({wacc:.2%}): "
+            "terminal growth destroys value in this scenario, so a higher g lowers the value"
+        )
+    return messages
+
+
 def run_dcf(
     company: CompanyData,
     quote: MarketQuote,
@@ -197,8 +220,7 @@ def run_dcf(
         f"FY{company.latest.fiscal_year}: no XBRL value for {item} (treated as 0 where used)"
         for item in missing_items(company.latest)
     ]
-    if final.ufcf <= 0:
-        warnings.append("Final-year FCF is not positive: the Gordon terminal value is meaningless")
+    warnings.extend(terminal_warnings(final.ufcf, final.ebitda, checks, wacc.wacc))
 
     return DcfResult(
         company=company,

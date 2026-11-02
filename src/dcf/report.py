@@ -139,14 +139,21 @@ def render(result: DcfResult) -> str:
 
     out.append("\nCROSS-CHECKS")
     ck = r.checks
+    multiple = ck.implied_exit_multiple
     out.append(
-        f"  Gordon TV implies an exit multiple of      {ck.implied_exit_multiple:.1f}x EBITDA"
+        "  Gordon TV implies an exit multiple of      "
+        + (f"{multiple:.1f}x EBITDA" if multiple is not None else "n/a (TV or EBITDA <= 0)")
     )
-    out.append(f"  Exit-multiple TV implies perpetual growth  {pct(ck.implied_perpetual_growth)}")
+    growth = ck.implied_perpetual_growth
+    out.append(
+        "  Exit-multiple TV implies perpetual growth  "
+        + (pct(growth) if growth is not None else "n/a (final-year FCF <= 0)")
+    )
     roic = ck.implied_terminal_roic
     out.append(
         "  Implied ROIC on new capital (final year)   "
         + (pct(roic) if roic is not None else "n/a (no net reinvestment)")
+        + ("  (below WACC)" if roic is not None and roic < w.wacc else "")
     )
 
     if r.sensitivity is not None:
