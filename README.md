@@ -241,7 +241,12 @@ Each line item has an ordered list of fallback tags, applied year by year:
 | Operating leases (info only) | `OperatingLeaseLiability` (or current + noncurrent) |
 | Shares | `WeightedAverageNumberOfDilutedSharesOutstanding`, `WeightedAverageNumberOfSharesOutstandingBasic`, cover page `dei:EntityCommonStockSharesOutstanding` (10-K or 10-Q) |
 
-Missing items are reported as warnings and treated as zero where they are used.
+Missing items are reported as warnings and treated as zero where they are used. Because
+the fallbacks apply year by year, one series can mix tags (for example revenue from
+`Revenues` in one year and from the ASC 606 tag in the next). The report and `historicals`
+therefore list the tag per fiscal year wherever it changes, and the report warns when a
+line item that feeds the historical ratios switches tag inside the `history_lookback`
+window.
 
 ### 2. WACC
 

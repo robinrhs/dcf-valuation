@@ -357,3 +357,31 @@ def latest_shares_outstanding(facts: dict) -> tuple[float, str] | None:
 def missing_items(year: FiscalYearData) -> list[str]:
     """Names of line items that could not be found for a fiscal year (for warnings)."""
     return [rule.name for rule in TAG_RULES if rule.name not in year.sources]
+
+
+# (first fiscal year, last fiscal year, tag or None if the item is missing)
+SourceRun = tuple[int, int, str | None]
+
+
+def source_runs(years: list[FiscalYearData], item: str) -> list[SourceRun]:
+    """Consecutive fiscal years that took a line item from the same tag (or none).
+
+    The fallback tags are applied year by year, so one series can mix definitions, e.g.
+    revenue from ``Revenues`` in one year and from the ASC 606 tag in the next. More than
+    one run means the source changed somewhere in the history.
+    """
+    runs: list[SourceRun] = []
+    for year in years:
+        tag = year.sources.get(item)
+        if runs and runs[-1][2] == tag:
+            runs[-1] = (runs[-1][0], year.fiscal_year, tag)
+        else:
+            runs.append((year.fiscal_year, year.fiscal_year, tag))
+    return runs
+
+
+def changed_sources(years: list[FiscalYearData]) -> dict[str, list[SourceRun]]:
+    """Line items whose XBRL source differs between the given years, in name order."""
+    items = sorted(set().union(*(year.sources for year in years))) if years else []
+    runs = {item: source_runs(years, item) for item in items}
+    return {item: r for item, r in runs.items() if len(r) > 1}

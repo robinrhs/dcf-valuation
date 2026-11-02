@@ -5,10 +5,12 @@ import pytest
 from dcf.sec_client import SecClient, SecError, sec_user_agent
 from dcf.xbrl import (
     annual_values,
+    changed_sources,
     extract_fiscal_years,
     is_annual_fact,
     latest_shares_outstanding,
     missing_items,
+    source_runs,
 )
 
 M = 1_000_000
@@ -110,3 +112,18 @@ def test_latest_cover_page_share_count(company_facts, add_fact):
         **dei,
     )
     assert latest_shares_outstanding(company_facts) == (96e6, "2026-04-24")
+
+
+def test_source_runs_show_a_tag_switch(company_facts):
+    years = extract_fiscal_years(company_facts)
+    # The fixture tags FY2022 revenue as Revenues and FY2023-FY2025 under ASC 606.
+    assert source_runs(years, "revenue") == [
+        (2022, 2022, "Revenues"),
+        (2023, 2025, "RevenueFromContractWithCustomerExcludingAssessedTax"),
+    ]
+    assert source_runs(years, "ebit") == [(2022, 2025, "OperatingIncomeLoss")]
+    changes = changed_sources(years)
+    assert set(changes) == {"revenue", "short_term_investments"}
+    assert changes["short_term_investments"][0] == (2022, 2023, None)
+    # Inside the last three years revenue is consistent.
+    assert "revenue" not in changed_sources(years[-3:])

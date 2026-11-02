@@ -7,9 +7,9 @@ import json
 from pathlib import Path
 
 from dcf.financials import historical_ufcf, revenue_growth_rates, safe_ratio
-from dcf.model import DcfResult
+from dcf.model import DcfResult, describe_runs
 from dcf.valuation import discount_factor
-from dcf.xbrl import FiscalYearData
+from dcf.xbrl import FiscalYearData, source_runs
 
 DISCLAIMER = "Educational model, not investment advice. Output is only as good as the inputs."
 MILLION = 1_000_000
@@ -62,8 +62,15 @@ def historicals_table(years: list[FiscalYearData], tax_rate: float) -> str:
     return table(header, rows)
 
 
-def sources_lines(year: FiscalYearData) -> str:
-    return "\n".join(f"  {name:<28} {tag}" for name, tag in sorted(year.sources.items()))
+def sources_lines(years: list[FiscalYearData]) -> str:
+    """XBRL tag per line item; split by fiscal year where the tag changes over time."""
+    items = sorted(set().union(*(y.sources for y in years)))
+    lines = []
+    for name in items:
+        runs = source_runs(years, name)
+        text = (runs[0][2] or "missing") if len(runs) == 1 else describe_runs(runs)
+        lines.append(f"  {name:<28} {text}")
+    return "\n".join(lines)
 
 
 def render(result: DcfResult) -> str:
@@ -194,8 +201,8 @@ def render(result: DcfResult) -> str:
             "  (holding this scenario's margins, reinvestment, WACC and terminal growth fixed)."
         )
 
-    out.append("\nXBRL TAGS USED (latest fiscal year)")
-    out.append(sources_lines(latest))
+    out.append("\nXBRL TAGS USED (split by fiscal year where they change)")
+    out.append(sources_lines(c.fiscal_years))
     if r.warnings:
         out.append("\nWARNINGS")
         out.extend(f"  - {msg}" for msg in r.warnings)

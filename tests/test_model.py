@@ -203,3 +203,19 @@ def test_market_as_of_from_yaml(tmp_path):
     cfg.write_text("market: {as_of: 15.10.2026}\n")
     with pytest.raises(ValueError, match="YYYY-MM-DD"):
         load_assumptions(cfg)
+
+
+def test_warns_when_a_ratio_input_switches_tag_inside_the_window(company, quote):
+    # Default window FY2023-FY2025: revenue comes from one tag, no warning.
+    base = run_dcf(company, quote, load_assumptions(CONFIG), with_sensitivity=False)
+    assert not any("XBRL source of" in w for w in base.warnings)
+    # Window FY2022-FY2025 includes the Revenues -> ASC 606 switch. Cash items such as
+    # short_term_investments do not feed the ratios and are not flagged.
+    wide = load_assumptions(CONFIG, {"projection": {"history_lookback": 4}})
+    result = run_dcf(company, quote, wide, with_sensitivity=False)
+    flagged = [w for w in result.warnings if "XBRL source of" in w]
+    assert flagged == [
+        "XBRL source of revenue changes inside the 4-year history window (FY2022 Revenues; "
+        "FY2023-FY2025 RevenueFromContractWithCustomerExcludingAssessedTax): check that the "
+        "years are comparable"
+    ]

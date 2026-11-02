@@ -70,3 +70,12 @@ def test_report_states_valuation_date_and_quote_date(capsys):
     assert "not rolled forward" in out
     assert main(["value", "EXMPL", *OFFLINE, "--as-of", "2026-11-02"]) == 0
     assert "Market data: manual override, as of 2026-11-02" in capsys.readouterr().out
+
+
+def test_historicals_show_per_year_tags_where_they_change(capsys):
+    assert main(["historicals", "EXMPL", "--fixture", FIXTURE]) == 0
+    out = capsys.readouterr().out
+    assert (
+        "FY2022 Revenues; FY2023-FY2025 RevenueFromContractWithCustomerExcludingAssessedTax" in out
+    )
+    assert "FY2022-FY2023 missing; FY2024-FY2025 ShortTermInvestments" in out

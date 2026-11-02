@@ -31,6 +31,8 @@ from dcf.valuation import (
 from dcf.wacc import WaccInputs, WaccResult, compute_wacc
 from dcf.xbrl import (
     FiscalYearData,
+    SourceRun,
+    changed_sources,
     extract_fiscal_years,
     latest_shares_outstanding,
     missing_items,
@@ -43,6 +45,41 @@ MAX_SHARE_COUNT_GAP = 0.25
 # Below this gap between WACC and terminal growth the Gordon TV explodes: 1 / (WACC - g)
 # doubles when the gap halves, so small input changes swing the value per share.
 MIN_WACC_GROWTH_SPREAD = 0.02
+
+# Line items whose history feeds the scenario defaults (CAGR, margin, D&A / capex / NWC /
+# tax ratios). A change of XBRL source inside the history window can break comparability.
+RATIO_ITEMS = (
+    "revenue",
+    "ebit",
+    "depreciation_amortization",
+    "capex",
+    "receivables",
+    "inventory",
+    "payables",
+    "deferred_revenue",
+    "income_tax_expense",
+    "pretax_income",
+)
+
+
+def describe_runs(runs: list[SourceRun]) -> str:
+    """'FY2022 Revenues; FY2023-FY2025 RevenueFrom...' (missing years say 'missing')."""
+    parts = []
+    for first, last, tag in runs:
+        years = f"FY{first}" if first == last else f"FY{first}-FY{last}"
+        parts.append(f"{years} {tag or 'missing'}")
+    return "; ".join(parts)
+
+
+def source_change_warnings(window: list[FiscalYearData]) -> list[str]:
+    """Warn when a ratio input switches XBRL tag inside the history window."""
+    changes = changed_sources(window)
+    return [
+        f"XBRL source of {item} changes inside the {len(window)}-year history window "
+        f"({describe_runs(changes[item])}): check that the years are comparable"
+        for item in RATIO_ITEMS
+        if item in changes
+    ]
 
 
 @dataclass(frozen=True)
@@ -321,6 +358,7 @@ def run_dcf(
             f"Only {history.years_used} fiscal years available: historical averages use "
             f"{history.years_used}, not history_lookback = {settings.history_lookback}"
         )
+    warnings.extend(source_change_warnings(company.fiscal_years[-history.years_used :]))
     warnings.extend(
         growth_warnings(scenario.terminal_growth, wacc.wacc, assumptions.wacc.risk_free_rate)
     )

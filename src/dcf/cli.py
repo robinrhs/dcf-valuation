@@ -16,7 +16,14 @@ import sys
 from dcf.assumptions import Assumptions, load_assumptions
 from dcf.market import MarketDataError, YFinanceProvider, resolve_quote
 from dcf.model import CompanyData, company_from_facts, prepare_company, run_dcf
-from dcf.report import DISCLAIMER, export, historicals_table, render, render_scenario_summary
+from dcf.report import (
+    DISCLAIMER,
+    export,
+    historicals_table,
+    render,
+    render_scenario_summary,
+    sources_lines,
+)
 from dcf.sec_client import SecClient, SecError, load_company_facts_file
 
 
@@ -100,9 +107,8 @@ def cmd_historicals(args: argparse.Namespace, assumptions: Assumptions) -> int:
     company = prepare_company(load_company(args), assumptions)
     print(f"{company.name} ({company.ticker}), CIK {company.cik}")
     print(historicals_table(company.fiscal_years, assumptions.tax_rate))
-    print("\nXBRL tags used per line item (latest fiscal year):")
-    for name, tag in sorted(company.latest.sources.items()):
-        print(f"  {name:<28} {tag}")
+    print("\nXBRL tags used per line item (split by fiscal year where they change):")
+    print(sources_lines(company.fiscal_years))
     return 0
 
 
