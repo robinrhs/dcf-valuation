@@ -155,7 +155,7 @@ def render(result: DcfResult) -> str:
             "\nSENSITIVITY: value per share (Gordon), rows = WACC, columns = terminal growth"
         )
         rows = [
-            [pct(wacc)] + [f"{v:,.0f}" if v is not None else "n/a" for v in values]
+            [pct(wacc, 2)] + [f"{v:,.0f}" if v is not None else "n/a" for v in values]
             for wacc, values in zip(s.waccs, s.values, strict=True)
         ]
         out.append(table(["WACC \\ g"] + [pct(gr) for gr in s.growths], rows, first_width=10))
