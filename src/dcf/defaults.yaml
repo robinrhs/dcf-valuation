@@ -1,0 +1,68 @@
+# Default assumptions for dcf-valuation.
+#
+# Every value can be overridden in your own YAML file (passed with --config); only the
+# keys you set are replaced, everything else falls back to this file.
+# Rates are decimals: 0.05 = 5%. "null" means "derive from the company's history" or
+# "fetch from the market data provider".
+#
+# IMPORTANT: the market inputs below are a snapshot. They go stale - update them (and
+# the "as of" dates) before relying on any output.
+
+market:
+  price: null          # null -> market data provider (yfinance); set a number to override
+  beta: null           # null -> provider beta (Yahoo: 5y monthly vs. S&P 500)
+  diluted_shares: null # null -> weighted-average diluted shares from the latest 10-K
+
+wacc:
+  # 10-year US Treasury constant-maturity yield, FRED series DGS10, value of 2026-10-29.
+  risk_free_rate: 0.0498
+  # Damodaran implied equity risk premium for the S&P 500 as of 2026-10-01 (trailing
+  # 12-month cash flows with adjusted payout), from pages.stern.nyu.edu/~adamodar.
+  equity_risk_premium: 0.042
+  # Pre-tax cost of debt. null -> risk_free_rate + credit_spread.
+  pretax_cost_of_debt: null
+  # Generic investment-grade spread assumption. Check Damodaran's rating/spread table
+  # (ratings.html) or the company's bond yields for a company-specific value.
+  credit_spread: 0.01
+  # Set a number to skip the CAPM build-up and use this WACC directly.
+  wacc_override: null
+
+tax_rate: 0.21          # US federal statutory rate; used for NOPAT and the debt tax shield
+
+projection:
+  years: 5              # explicit forecast horizon, 5-10 years
+  mid_year_convention: true
+  history_lookback: 3   # fiscal years used for historical averages / CAGR
+
+balance_sheet:          # equity bridge overrides (absolute USD); null -> latest 10-K
+  debt: null
+  cash: null
+
+sensitivity:
+  wacc_step: 0.005
+  growth_step: 0.005
+  steps_each_side: 2
+
+# Scenarios. null values are filled from history (see projection.py):
+#   revenue_growth_start -> historical revenue CAGR, ebit_margin_start -> last margin,
+#   *_pct_revenue -> historical average. Shifts are added on top (bull/bear).
+scenarios:
+  base:
+    revenue_growth_start: null
+    ebit_margin_target: null
+    terminal_growth: 0.025
+    exit_multiple: 12.0
+  bull:
+    revenue_growth_start: null
+    revenue_growth_shift: 0.03
+    ebit_margin_target: null
+    ebit_margin_shift: 0.02
+    terminal_growth: 0.03
+    exit_multiple: 14.0
+  bear:
+    revenue_growth_start: null
+    revenue_growth_shift: -0.03
+    ebit_margin_target: null
+    ebit_margin_shift: -0.03
+    terminal_growth: 0.02
+    exit_multiple: 10.0

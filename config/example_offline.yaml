@@ -1,0 +1,15 @@
+# Assumptions for the synthetic offline fixture (tests/fixtures/companyfacts_example.json).
+# Used by:  python -m dcf value EXMPL --fixture tests/fixtures/companyfacts_example.json \
+#              --config config/example_offline.yaml
+# "Example Corp" is fictional; its price and beta are made up for demonstration only.
+
+market:
+  price: 30.00
+  beta: 1.10
+
+scenarios:
+  base:
+    revenue_growth_start: 0.09
+    ebit_margin_target: 0.24
+    terminal_growth: 0.025
+    exit_multiple: 11.0
