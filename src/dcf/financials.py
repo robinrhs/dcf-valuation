@@ -7,9 +7,14 @@ leaves a value empty (``null``).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from dcf.xbrl import FiscalYearData
+
+# D&A sources that come from the notes (owned property and intangibles). The cash flow
+# statement totals (DepreciationDepletionAndAmortization etc.) normally already contain
+# the amortisation of finance-lease ROU assets; these note-level figures usually do not.
+NOTE_LEVEL_DA_SOURCES = {"Depreciation + AmortizationOfIntangibleAssets", "Depreciation"}
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,43 @@ def cagr(first: float, last: float, periods: int) -> float | None:
     if periods <= 0 or first <= 0 or last <= 0:
         return None
     return (last / first) ** (1 / periods) - 1
+
+
+def include_finance_leases(year: FiscalYearData) -> FiscalYearData:
+    """Treat finance leases like assets bought with borrowed money.
+
+    A finance lease adds an asset and a liability without any cash capex. If the liability
+    is subtracted in the bridge as debt, the asset must also count as investment, or the
+    leased data centres come in for free:
+        capex  += ROU assets obtained in exchange for new finance-lease liabilities
+        D&A    += finance-lease ROU amortisation (non-cash, inside EBIT), but only when D&A
+                  was rebuilt from note-level depreciation that does not already include it
+    Calling it twice changes nothing.
+    """
+    if year.includes_finance_leases:
+        return year
+    sources = dict(year.sources)
+    capex = year.capex
+    if year.finance_lease_additions is not None:
+        capex = (capex or 0.0) + year.finance_lease_additions
+        sources["capex"] = (
+            sources.get("capex", "n/a")
+            + " + RightOfUseAssetObtainedInExchangeForFinanceLeaseLiability"
+        )
+    da = year.depreciation_amortization
+    da_source = sources.get("depreciation_amortization")
+    if year.finance_lease_amortization is not None and da_source in NOTE_LEVEL_DA_SOURCES:
+        da = (da or 0.0) + year.finance_lease_amortization
+        sources["depreciation_amortization"] = (
+            f"{da_source} + FinanceLeaseRightOfUseAssetAmortization"
+        )
+    return replace(
+        year,
+        capex=capex,
+        depreciation_amortization=da,
+        sources=sources,
+        includes_finance_leases=True,
+    )
 
 
 def historical_ufcf(years: list[FiscalYearData], tax_rate: float) -> list[float | None]:

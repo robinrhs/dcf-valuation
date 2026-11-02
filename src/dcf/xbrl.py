@@ -139,6 +139,40 @@ TAG_RULES: tuple[TagRule, ...] = (
         "instant",
         (("ShortTermBorrowings",), ("CommercialPaper",)),
     ),
+    # Leases (ASC 842). A finance lease is economically a debt-financed asset purchase:
+    # the liability is debt-like, the new right-of-use (ROU) asset is investment that never
+    # shows up in cash capex, and its amortisation is a non-cash charge inside EBIT.
+    TagRule(
+        "finance_lease_liabilities",
+        "instant",
+        (
+            ("FinanceLeaseLiability",),
+            ("FinanceLeaseLiabilityCurrent", "FinanceLeaseLiabilityNoncurrent"),
+            ("FinanceLeaseLiabilityNoncurrent",),
+        ),
+    ),
+    TagRule(
+        "finance_lease_additions",
+        "duration",
+        (("RightOfUseAssetObtainedInExchangeForFinanceLeaseLiability",),),
+    ),
+    TagRule(
+        "finance_lease_amortization",
+        "duration",
+        (("FinanceLeaseRightOfUseAssetAmortization",),),
+    ),
+    # Operating leases: the rent is an operating expense inside EBIT, so the liability is
+    # shown for information only and NOT subtracted in the bridge (that would count the
+    # same lease twice: once as rent in FCF, once as debt).
+    TagRule(
+        "operating_lease_liabilities",
+        "instant",
+        (
+            ("OperatingLeaseLiability",),
+            ("OperatingLeaseLiabilityCurrent", "OperatingLeaseLiabilityNoncurrent"),
+            ("OperatingLeaseLiabilityNoncurrent",),
+        ),
+    ),
 )
 
 RULES_BY_NAME = {rule.name: rule for rule in TAG_RULES}
@@ -165,8 +199,14 @@ class FiscalYearData:
     short_term_investments: float | None = None
     long_term_debt: float | None = None
     short_term_borrowings: float | None = None
+    finance_lease_liabilities: float | None = None
+    finance_lease_additions: float | None = None
+    finance_lease_amortization: float | None = None
+    operating_lease_liabilities: float | None = None
     # Which tag(s) delivered each value, e.g. {"revenue": "Revenues"} - for transparency.
     sources: dict[str, str] = field(default_factory=dict)
+    # True once capex / D&A have been adjusted for finance leases (see financials.py).
+    includes_finance_leases: bool = False
 
     @property
     def net_working_capital(self) -> float:

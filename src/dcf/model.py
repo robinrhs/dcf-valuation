@@ -6,10 +6,10 @@ whole valuation can be reproduced offline from a fixture.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from dcf.assumptions import Assumptions
-from dcf.financials import HistoricalSummary, summarize
+from dcf.financials import HistoricalSummary, include_finance_leases, summarize
 from dcf.market import MarketQuote
 from dcf.projection import ProjectionYear, Scenario, project, resolve_scenario, with_constant_growth
 from dcf.reverse_dcf import implied_growth
@@ -79,26 +79,43 @@ def company_from_facts(ticker: str, facts: dict, max_years: int = 5) -> CompanyD
     return CompanyData(ticker.upper(), facts.get("entityName", ticker), facts.get("cik"), years)
 
 
+def prepare_company(company: CompanyData, assumptions: Assumptions) -> CompanyData:
+    """Apply the lease treatment chosen in YAML to all historical years."""
+    if not assumptions.balance_sheet.finance_leases_as_debt:
+        return company
+    return replace(company, fiscal_years=[include_finance_leases(y) for y in company.fiscal_years])
+
+
 def build_bridge(company: CompanyData, assumptions: Assumptions, price: float) -> BridgeInputs:
-    """Debt, cash and share count from the latest 10-K, unless overridden in YAML."""
+    """Debt, leases, cash and share count from the latest 10-K, unless overridden in YAML."""
     latest = company.latest
+    sheet = assumptions.balance_sheet
     shares = assumptions.market.diluted_shares or latest.diluted_shares
     if not shares:
         raise ValueError("Diluted shares missing in filings: set market.diluted_shares in YAML")
-    debt = assumptions.balance_sheet.debt
-    cash = assumptions.balance_sheet.cash
+    if sheet.finance_lease_liabilities is not None:
+        leases = sheet.finance_lease_liabilities
+    elif sheet.finance_leases_as_debt:
+        leases = latest.finance_lease_liabilities or 0.0
+    else:
+        leases = 0.0
     return BridgeInputs(
-        debt=latest.total_debt if debt is None else debt,
-        cash=latest.cash_and_investments if cash is None else cash,
+        debt=latest.total_debt if sheet.debt is None else sheet.debt,
+        cash=latest.cash_and_investments if sheet.cash is None else sheet.cash,
         diluted_shares=shares,
         share_price=price,
+        lease_liabilities=leases,
     )
 
 
 def build_wacc(
     assumptions: Assumptions, quote: MarketQuote, bridge: BridgeInputs
 ) -> tuple[WaccInputs, WaccResult]:
-    """CAPM-based WACC with market-value equity and book-value debt weights."""
+    """CAPM-based WACC with market-value equity and book-value debt weights.
+
+    D includes finance-lease liabilities: whatever is subtracted as debt in the bridge must
+    also be part of the capital whose cost the WACC measures.
+    """
     inputs = WaccInputs(
         risk_free_rate=assumptions.wacc.risk_free_rate,
         beta=quote.beta,
@@ -106,7 +123,7 @@ def build_wacc(
         pretax_cost_of_debt=assumptions.wacc.cost_of_debt,
         tax_rate=assumptions.tax_rate,
         market_cap=quote.price * bridge.diluted_shares,
-        debt=bridge.debt,
+        debt=bridge.debt_like,
     )
     result = compute_wacc(inputs)
     if assumptions.wacc.wacc_override is not None:
@@ -167,6 +184,7 @@ def run_dcf(
         raise ValueError(
             f"Unknown scenario {scenario_name!r}; available: {sorted(assumptions.scenarios)}"
         )
+    company = prepare_company(company, assumptions)
     settings = assumptions.projection
     mid_year = settings.mid_year_convention
     history = summarize(company.fiscal_years, lookback=settings.history_lookback)

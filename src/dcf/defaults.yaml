@@ -38,6 +38,11 @@ projection:
 balance_sheet:          # equity bridge overrides (absolute USD); null -> latest 10-K
   debt: null
   cash: null
+  finance_lease_liabilities: null
+  # Finance leases are debt-financed asset purchases: subtract the liability as debt (also
+  # in the WACC weights) and count new lease-financed assets as capex. Operating leases
+  # stay inside EBIT as rent and are not subtracted.
+  finance_leases_as_debt: true
 
 sensitivity:
   wacc_step: 0.005

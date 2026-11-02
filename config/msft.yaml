@@ -1,6 +1,10 @@
 # Case-study assumptions for Microsoft (MSFT), fiscal year ending 30 June.
 # Written 2026-11-02 against the FY2026 10-K (revenue USD 331.8bn, +17.8%; EBIT margin
-# 46.8%; capex USD 115.9bn = 35% of revenue during the AI data-centre build-out).
+# 46.8%). Capex is measured INCLUDING assets obtained under finance leases (the model's
+# default, see balance_sheet.finance_leases_as_debt): USD 115.9bn cash capex + USD 24.6bn
+# finance-lease additions = USD 140.6bn, 42% of revenue, during the AI data-centre
+# build-out. D&A likewise includes finance-lease ROU amortisation (USD 44.4bn, 13.4%).
+# The USD 66.6bn finance-lease liability is subtracted in the equity bridge.
 # These are illustrative judgement calls for a learning project, not a forecast.
 #
 # Run:  python -m dcf value MSFT --config config/msft.yaml --scenario all
@@ -15,27 +19,27 @@ scenarios:
   base:
     revenue_growth_start: 0.15      # below FY2026 growth (17.8%), fades to 3% by year 7
     ebit_margin_target: 0.44        # higher depreciation from the capex wave weighs on margin
-    da_pct_revenue: 0.12            # ~FY2026 level of the XBRL D&A proxy (11.8%)
-    da_pct_revenue_target: 0.14     # D&A catches up with the enlarged asset base
-    capex_pct_revenue: 0.33         # starts near today's 35% ...
-    capex_pct_revenue_target: 0.17  # ... and normalises, still above D&A (net reinvestment)
+    da_pct_revenue: 0.13            # ~FY2026 level incl. finance-lease amortisation (13.4%)
+    da_pct_revenue_target: 0.15     # D&A catches up with the enlarged asset base
+    capex_pct_revenue: 0.40         # starts a little below today's 42% (incl. finance leases) ...
+    capex_pct_revenue_target: 0.18  # ... and normalises, still above D&A (net reinvestment)
     terminal_growth: 0.03
     exit_multiple: 18.0             # EV/EBITDA in the final year; a judgement call
   bull:
     revenue_growth_start: 0.19
     ebit_margin_target: 0.47
-    da_pct_revenue: 0.12
-    da_pct_revenue_target: 0.13
-    capex_pct_revenue: 0.33
-    capex_pct_revenue_target: 0.15
+    da_pct_revenue: 0.13
+    da_pct_revenue_target: 0.14
+    capex_pct_revenue: 0.40
+    capex_pct_revenue_target: 0.16
     terminal_growth: 0.035
     exit_multiple: 22.0
   bear:
     revenue_growth_start: 0.10
     ebit_margin_target: 0.40
-    da_pct_revenue: 0.12
-    da_pct_revenue_target: 0.16
-    capex_pct_revenue: 0.33
-    capex_pct_revenue_target: 0.20
+    da_pct_revenue: 0.13
+    da_pct_revenue_target: 0.17
+    capex_pct_revenue: 0.40
+    capex_pct_revenue_target: 0.21
     terminal_growth: 0.025
     exit_multiple: 14.0

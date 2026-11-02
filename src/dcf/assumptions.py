@@ -47,6 +47,10 @@ class ProjectionSettings:
 class BalanceSheetOverrides:
     debt: float | None = None
     cash: float | None = None
+    finance_lease_liabilities: float | None = None
+    # True: finance leases count as debt in the bridge and WACC, and lease-financed assets
+    # as capex. False: both are ignored (the pre-ASC 842 "lease = rent" view).
+    finance_leases_as_debt: bool = True
 
 
 @dataclass(frozen=True)

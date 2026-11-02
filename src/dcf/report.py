@@ -41,6 +41,7 @@ def table(header: list[str], rows: list[list[str]], first_width: int = 26) -> st
 def historicals_table(years: list[FiscalYearData], tax_rate: float) -> str:
     growth = revenue_growth_rates(years)
     ufcf = historical_ufcf(years, tax_rate)
+    leases_in = years[-1].includes_finance_leases
     header = ["USD m (10-K)"] + [f"FY{y.fiscal_year}" for y in years]
     rows = [
         ["Revenue"] + [money(y.revenue) for y in years],
@@ -48,10 +49,13 @@ def historicals_table(years: list[FiscalYearData], tax_rate: float) -> str:
         ["EBIT (operating income)"] + [money(y.ebit) for y in years],
         ["  margin"] + [pct(safe_ratio(y.ebit, y.revenue)) for y in years],
         ["D&A"] + [money(y.depreciation_amortization) for y in years],
-        ["Capex"] + [money(y.capex) for y in years],
+        ["Capex" + (" incl. fin. leases" if leases_in else "")] + [money(y.capex) for y in years],
+        ["  of which finance leases"] + [money(y.finance_lease_additions) for y in years],
         ["Operating NWC"] + [money(y.net_working_capital) for y in years],
         [f"UFCF (t = {pct(tax_rate, 0)})"] + [money(u) for u in ufcf],
         ["Total debt"] + [money(y.total_debt) for y in years],
+        ["Finance lease liabilities"] + [money(y.finance_lease_liabilities) for y in years],
+        ["Operating lease liab. (info)"] + [money(y.operating_lease_liabilities) for y in years],
         ["Cash + ST investments"] + [money(y.cash_and_investments) for y in years],
         ["Diluted shares (m)"] + [money(y.diluted_shares) for y in years],
     ]
@@ -59,7 +63,7 @@ def historicals_table(years: list[FiscalYearData], tax_rate: float) -> str:
 
 
 def sources_lines(year: FiscalYearData) -> str:
-    return "\n".join(f"  {name:<26} {tag}" for name, tag in sorted(year.sources.items()))
+    return "\n".join(f"  {name:<28} {tag}" for name, tag in sorted(year.sources.items()))
 
 
 def render(result: DcfResult) -> str:
@@ -127,6 +131,11 @@ def render(result: DcfResult) -> str:
         ["PV of explicit FCF", money(g.pv_explicit), money(x.pv_explicit)],
         ["Enterprise value", money(g.enterprise_value), money(x.enterprise_value)],
         ["- Debt", money(r.bridge.debt), money(r.bridge.debt)],
+        [
+            "- Finance lease liabilities",
+            money(r.bridge.lease_liabilities),
+            money(r.bridge.lease_liabilities),
+        ],
         ["+ Cash & ST investments", money(r.bridge.cash), money(r.bridge.cash)],
         ["= Equity value", money(g.equity_value), money(x.equity_value)],
         ["Diluted shares (m)", money(r.bridge.diluted_shares), money(r.bridge.diluted_shares)],
@@ -265,6 +274,12 @@ def export(result: DcfResult, out_dir: str | Path) -> list[Path]:
         "market_data_source": result.quote.source,
         "wacc": result.wacc.wacc,
         "mid_year_convention": result.mid_year,
+        "bridge": {
+            "debt": result.bridge.debt,
+            "finance_lease_liabilities": result.bridge.lease_liabilities,
+            "cash_and_st_investments": result.bridge.cash,
+            "diluted_shares": result.bridge.diluted_shares,
+        },
         "gordon": {
             "enterprise_value": result.gordon.enterprise_value,
             "equity_value": result.gordon.equity_value,

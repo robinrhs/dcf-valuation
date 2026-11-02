@@ -16,7 +16,7 @@ cash flows that themselves arrive mid-year, so it is discounted with N - 0.5. An
 multiple represents a sale price at the end of year N, so it is discounted with N.
 
 Equity bridge:
-    Equity value = EV - debt + cash (and short-term investments)
+    Equity value = EV - debt - finance-lease liabilities + cash (and short-term investments)
     Value per share = equity value / diluted shares
 """
 
@@ -32,10 +32,16 @@ TerminalMethod = Literal["gordon", "exit_multiple"]
 
 @dataclass(frozen=True)
 class BridgeInputs:
-    debt: float
+    debt: float  # financial debt (bonds, loans, commercial paper)
     cash: float  # cash and equivalents plus short-term investments
     diluted_shares: float
     share_price: float
+    lease_liabilities: float = 0.0  # finance leases, treated as debt-like claims
+
+    @property
+    def debt_like(self) -> float:
+        """All claims of lenders that rank ahead of equity: debt plus finance leases."""
+        return self.debt + self.lease_liabilities
 
 
 @dataclass(frozen=True)
@@ -135,9 +141,12 @@ def implied_terminal_roic(final_year: ProjectionYear, growth: float) -> float | 
 
 
 # ------------------------------------------------------------------ bridge
-def equity_value_from_ev(enterprise_value: float, debt: float, cash: float) -> float:
-    """EV belongs to all capital providers: subtract debt, add back non-operating cash."""
-    return enterprise_value - debt + cash
+def equity_value_from_ev(
+    enterprise_value: float, debt: float, cash: float, lease_liabilities: float = 0.0
+) -> float:
+    """EV belongs to all capital providers: subtract debt and debt-like finance leases,
+    add back non-operating cash."""
+    return enterprise_value - debt - lease_liabilities + cash
 
 
 def per_share(equity_value: float, diluted_shares: float) -> float:
@@ -165,7 +174,7 @@ def value_firm(
     pv_explicit = present_value([row.ufcf for row in projection], wacc, mid_year)
     pv_terminal = terminal_value * terminal_discount_factor(wacc, years, method, mid_year)
     ev = pv_explicit + pv_terminal
-    equity = equity_value_from_ev(ev, bridge.debt, bridge.cash)
+    equity = equity_value_from_ev(ev, bridge.debt, bridge.cash, bridge.lease_liabilities)
     value = per_share(equity, bridge.diluted_shares)
     return ValuationResult(
         method=method,
