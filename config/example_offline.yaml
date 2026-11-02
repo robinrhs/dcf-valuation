@@ -10,7 +10,7 @@ market:
 # Defining scenarios here replaces the default bull/base/bear set completely.
 scenarios:
   base:
-    revenue_growth_start: 0.09   # slightly below the ~10.6% 3-year CAGR
+    revenue_growth_start: 0.09   # slightly below the ~10.6% CAGR of FY2023-FY2025 (2 periods)
     ebit_margin_target: 0.24     # +1pp vs. the last reported 23% margin
     terminal_growth: 0.025
     exit_multiple: 11.0

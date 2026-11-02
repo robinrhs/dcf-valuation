@@ -132,7 +132,8 @@ def revenue_growth_rates(years: list[FiscalYearData]) -> list[float | None]:
 def summarize(years: list[FiscalYearData], lookback: int = 3) -> HistoricalSummary:
     """Summarise the last ``lookback`` fiscal years (oldest first in ``years``).
 
-    Averages over several years smooth one-off effects; the CAGR uses the same window.
+    Averages over several years smooth one-off effects; the CAGR uses the same window, so
+    3 fiscal years give 2 growth periods (a 2-year CAGR from the first to the last year).
     The margin uses the latest year because it is the jumping-off point of the forecast.
     """
     if not years:

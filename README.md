@@ -240,8 +240,9 @@ inventory - payables - current deferred revenue.
 - **Growth path:** linear fade from the year-1 rate to the terminal growth rate, reached
   in the final explicit year, so the business is in a steady state when the TV starts.
 - **Margin / capex / D&A paths:** linear glide from today's level to a target level.
-- **Defaults:** empty (`null`) YAML values fall back to history: 3-year revenue CAGR,
-  last EBIT margin, 3-year average reinvestment ratios.
+- **Defaults:** empty (`null`) YAML values fall back to history over the last three fiscal
+  years: the revenue CAGR between the first and last of them (two growth periods, i.e. a
+  2-year CAGR), the last EBIT margin, and 3-year average reinvestment ratios.
 - **Scenarios:** bull / base / bear are separate YAML blocks (see `config/msft.yaml`).
 
 ### 4. Discounting and mid-year convention
@@ -256,9 +257,17 @@ a stream of mid-year cash flows. The exit-multiple TV is a sale price at the end
 
 $$TV^{Gordon}_N = \frac{UFCF_N (1 + g)}{WACC - g} \qquad TV^{Exit}_N = EBITDA_N \times \text{multiple}$$
 
-Cross-checks (adjusted for the mid-year timing):
+Cross-checks. Without the mid-year convention both TVs sit at the end of year `N`:
 
 $$\text{implied multiple} = \frac{TV^{Gordon}_N}{EBITDA_N} \qquad \text{implied } g = \frac{TV^{Exit}_N \cdot WACC - UFCF_N}{TV^{Exit}_N + UFCF_N}$$
+
+Under the mid-year convention the Gordon TV is discounted from `N - 0.5` and the exit TV
+from `N`, so they refer to dates half a year apart. Before comparing, the code moves each to
+the other's date with a factor of `(1 + WACC)^0.5`:
+
+$$\text{implied multiple} = \frac{TV^{Gordon}_N (1 + WACC)^{0.5}}{EBITDA_N} \qquad \text{implied } g = \frac{\widetilde{TV} \cdot WACC - UFCF_N}{\widetilde{TV} + UFCF_N}, \quad \widetilde{TV} = \frac{TV^{Exit}_N}{(1 + WACC)^{0.5}}$$
+
+Both cross-checks are shown as n/a when `UFCF_N` or `EBITDA_N` is not positive.
 
 The report also shows the TV share of enterprise value and the implied return on new
 capital in the final year, `ROIC = g / reinvestment rate` with reinvestment rate =

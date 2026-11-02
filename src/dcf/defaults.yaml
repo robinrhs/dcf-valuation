@@ -34,7 +34,8 @@ tax_rate: 0.21          # US federal statutory rate; used for NOPAT and the debt
 projection:
   years: 5              # explicit forecast horizon, 5-10 years
   mid_year_convention: true
-  history_lookback: 3   # fiscal years used for historical averages / CAGR
+  history_lookback: 3   # fiscal years used for historical averages; the CAGR over these
+                        # 3 years spans 2 growth periods (a 2-year CAGR)
 
 balance_sheet:          # equity bridge overrides (absolute USD); null -> latest 10-K
   debt: null
