@@ -6,20 +6,21 @@ Endpoints used (both free, no API key):
 
 SEC fair-access rules: identify yourself with a User-Agent of the form "Name email" and
 stay below 10 requests per second. Set your own identity via the SEC_USER_AGENT
-environment variable; the default below is a neutral placeholder.
+environment variable. Without it the client refuses to download (cached files and offline
+fixtures still work), so no request ever reaches the SEC under a made-up identity.
 """
 
 from __future__ import annotations
 
 import json
 import os
-import sys
 import time
 from pathlib import Path
 
 import requests
 
-DEFAULT_USER_AGENT = "dcf-valuation research-tool admin@example.com"
+# Format example only, shown in error messages. It is never sent to the SEC.
+EXAMPLE_USER_AGENT = "dcf-valuation research-tool admin@example.com"
 TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 COMPANY_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json"
 
@@ -33,9 +34,9 @@ class SecError(RuntimeError):
     """Raised when EDGAR data cannot be obtained (network, unknown ticker, offline miss)."""
 
 
-def sec_user_agent() -> str:
-    """User-Agent sent to the SEC: $SEC_USER_AGENT if set, otherwise the placeholder."""
-    return os.environ.get("SEC_USER_AGENT", "").strip() or DEFAULT_USER_AGENT
+def sec_user_agent() -> str | None:
+    """User-Agent sent to the SEC: $SEC_USER_AGENT, or None if it is not set."""
+    return os.environ.get("SEC_USER_AGENT", "").strip() or None
 
 
 def load_company_facts_file(path: str | Path) -> dict:
@@ -61,7 +62,6 @@ class SecClient:
         self.offline = offline
         self.refresh = refresh
         self._last_request = 0.0
-        self._warned_placeholder = False
 
     # ----------------------------------------------------------------- public API
     def ticker_to_cik(self, ticker: str) -> tuple[int, str]:
@@ -104,13 +104,13 @@ class SecClient:
         self._last_request = time.monotonic()
 
     def _download(self, url: str, retries: int = 3) -> dict:
-        if self.user_agent == DEFAULT_USER_AGENT and not self._warned_placeholder:
-            print(
-                "note: using the placeholder SEC User-Agent. Please set SEC_USER_AGENT="
-                '"Your Name your@email" as required by the SEC fair-access policy.',
-                file=sys.stderr,
+        if not self.user_agent:
+            raise SecError(
+                "SEC_USER_AGENT is not set. The SEC fair-access policy requires a contact in "
+                f'the form "Name email", e.g. export SEC_USER_AGENT="{EXAMPLE_USER_AGENT}" '
+                "with your own name and address. Cached data (--offline) and --fixture work "
+                "without it."
             )
-            self._warned_placeholder = True
         headers = {"User-Agent": self.user_agent, "Accept-Encoding": "gzip, deflate"}
         for attempt in range(retries):
             self._throttle()

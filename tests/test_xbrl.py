@@ -86,4 +86,4 @@ def test_user_agent_comes_from_environment(monkeypatch):
     monkeypatch.setenv("SEC_USER_AGENT", "Jane Doe jane@example.org")
     assert sec_user_agent() == "Jane Doe jane@example.org"
     monkeypatch.delenv("SEC_USER_AGENT")
-    assert "example.com" in sec_user_agent()
+    assert sec_user_agent() is None
