@@ -11,8 +11,6 @@ today's share price already implies.
 > **Not investment advice.** This is an educational tool. Its output depends entirely
 > on the assumptions you feed it and says nothing reliable about future share prices.
 
-<!-- TODO screenshot: terminal recording (GIF) of `python -m dcf value MSFT --config config/msft.yaml` -->
-
 ## What it does and why
 
 A DCF values a business as the present value of the cash it will generate. Most student
