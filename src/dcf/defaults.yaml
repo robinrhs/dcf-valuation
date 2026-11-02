@@ -14,6 +14,8 @@ market:
   beta: null           # null -> provider beta (Yahoo: 5y monthly vs. S&P 500)
   diluted_shares: null # null -> latest cover-page shares + 10-K dilution (fallback:
                        #         weighted-average diluted shares of the latest 10-K)
+  as_of: null          # date of a manual price/beta (YYYY-MM-DD), shown in the report;
+                       # null -> "date not stated"
 
 wacc:
   # 10-year US Treasury constant-maturity yield, FRED series DGS10, value of 2026-10-29.

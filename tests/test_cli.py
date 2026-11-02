@@ -60,3 +60,13 @@ def test_zero_or_negative_price_fails_cleanly(capsys):
 def test_implausible_beta_fails_cleanly(capsys):
     assert main(["value", "EXMPL", *OFFLINE, "--beta", "11"]) == 1
     assert "plausible range" in capsys.readouterr().err
+
+
+def test_report_states_valuation_date_and_quote_date(capsys):
+    assert main(["value", "EXMPL", *OFFLINE]) == 0
+    out = capsys.readouterr().out
+    assert "Market data: manual override, date not stated" in out
+    assert "Valuation date: FY2025 period end 2025-12-31" in out
+    assert "not rolled forward" in out
+    assert main(["value", "EXMPL", *OFFLINE, "--as-of", "2026-11-02"]) == 0
+    assert "Market data: manual override, as of 2026-11-02" in capsys.readouterr().out

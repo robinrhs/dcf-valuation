@@ -20,6 +20,7 @@ class MarketOverrides:
     price: float | None = None
     beta: float | None = None
     diluted_shares: float | None = None
+    as_of: str | None = None  # date of a manually entered price / beta, e.g. 2026-11-02
 
 
 @dataclass(frozen=True)
@@ -217,6 +218,13 @@ def validate(assumptions: Assumptions) -> None:
             0 < w.wacc_override < 1,
             f"wacc.wacc_override = {w.wacc_override} must be between 0 and 1 (0.09 = 9%)",
         )
+    if a.market.as_of is not None:
+        try:
+            dt.date.fromisoformat(a.market.as_of)
+        except ValueError:
+            raise ValueError(
+                f"market.as_of = {a.market.as_of!r} must be a date in the form YYYY-MM-DD"
+            ) from None
     if a.market.diluted_shares is not None:
         _check(a.market.diluted_shares > 0, "market.diluted_shares must be positive")
     _check(

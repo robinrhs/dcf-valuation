@@ -38,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     value.add_argument("--scenario", default="base", help="scenario name from YAML, or 'all'")
     value.add_argument("--price", type=float, help="override share price")
     value.add_argument("--beta", type=float, help="override beta")
+    value.add_argument("--as-of", help="date of the --price/--beta values (YYYY-MM-DD)")
     value.add_argument("--years", type=int, help="explicit forecast years (5-10)")
     value.add_argument(
         "--mid-year",
@@ -59,6 +60,8 @@ def cli_overrides(args: argparse.Namespace) -> dict:
         overrides.setdefault("market", {})["price"] = args.price
     if getattr(args, "beta", None) is not None:
         overrides.setdefault("market", {})["beta"] = args.beta
+    if getattr(args, "as_of", None) is not None:
+        overrides.setdefault("market", {})["as_of"] = args.as_of
     if getattr(args, "years", None) is not None:
         overrides.setdefault("projection", {})["years"] = args.years
     if getattr(args, "mid_year", None) is not None:
@@ -77,9 +80,8 @@ def load_company(args: argparse.Namespace) -> CompanyData:
 def cmd_value(args: argparse.Namespace, assumptions: Assumptions) -> int:
     company = load_company(args)
     provider = None if args.offline else YFinanceProvider()
-    quote = resolve_quote(
-        company.ticker, provider, assumptions.market.price, assumptions.market.beta
-    )
+    market = assumptions.market
+    quote = resolve_quote(company.ticker, provider, market.price, market.beta, market.as_of)
     names = list(assumptions.scenarios) if args.scenario == "all" else [args.scenario]
     results = [run_dcf(company, quote, assumptions, name) for name in names]
     for result in results:

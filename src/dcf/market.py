@@ -30,7 +30,7 @@ class MarketQuote:
     price: float
     beta: float
     source: str  # where the numbers came from, shown in the report
-    as_of: str
+    as_of: str | None  # date of the price; None if a manual value was entered without one
 
 
 class MarketDataProvider(Protocol):
@@ -90,17 +90,18 @@ def resolve_quote(
     provider: MarketDataProvider | None,
     price_override: float | None = None,
     beta_override: float | None = None,
+    override_as_of: str | None = None,
 ) -> MarketQuote:
     """Combine YAML overrides with provider data. Overrides always take precedence.
 
     If both price and beta are overridden, the provider is never called (fully offline).
     The combined values are checked by ``validate_quote`` before they are used.
+    ``override_as_of`` is the date the manual values refer to (``market.as_of``). Without
+    it the report says "date not stated" instead of stamping a typed-in price with today.
     """
     if price_override is not None and beta_override is not None:
         validate_quote(price_override, beta_override)
-        return MarketQuote(
-            ticker, price_override, beta_override, "manual override", date.today().isoformat()
-        )
+        return MarketQuote(ticker, price_override, beta_override, "manual override", override_as_of)
     if provider is None:
         raise MarketDataError(
             "No market data provider available: set market.price and market.beta in YAML "
@@ -109,7 +110,7 @@ def resolve_quote(
     quote = provider.get_quote(ticker)
     source = quote.source
     if price_override is not None or beta_override is not None:
-        source += " + manual override"
+        source += f" + manual override ({override_as_of or 'date not stated'})"
     price = price_override if price_override is not None else quote.price
     beta = beta_override if beta_override is not None else quote.beta
     validate_quote(price, beta)

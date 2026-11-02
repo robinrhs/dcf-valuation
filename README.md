@@ -56,8 +56,9 @@ uv run python -m dcf value EXMPL --offline \
 ```
 
 Useful flags: `--years 5..10`, `--mid-year / --no-mid-year`, `--price`, `--beta`,
-`--offline` (cache and YAML only), `--refresh` (ignore the cache), `--export DIR` (CSV of
-the projection and sensitivity grid plus a JSON summary).
+`--as-of YYYY-MM-DD` (date of a manual price/beta, otherwise the report says "date not
+stated"), `--offline` (cache and YAML only), `--refresh` (ignore the cache), `--export DIR`
+(CSV of the projection and sensitivity grid plus a JSON summary).
 
 If `SEC_USER_AGENT` is not set, the tool refuses to download from the SEC and tells you
 how to set it (format example: `dcf-valuation research-tool admin@example.com`, but use
@@ -353,7 +354,7 @@ more in absolute terms (`9` instead of `0.09`), D&A or capex shares outside 0-1,
 | Equity risk premium | 4.20% | Damodaran implied ERP (trailing 12-month cash flows, adjusted payout), 2026-10-01 |
 | Credit spread | 1.0% (MSFT case: 0.6%) | Assumption; compare with Damodaran's rating/spread table or bond yields |
 | Tax rate | 21% | US federal statutory rate (state taxes ignored) |
-| Beta, price | live | yfinance (Yahoo beta: 5-year monthly vs. S&P 500); overridable in YAML |
+| Beta, price | live | yfinance (Yahoo beta: 5-year monthly vs. S&P 500); overridable in YAML, with `market.as_of` for the date of manual values |
 | Horizon | 5 years (MSFT case: 7) | Allowed range 5-10 |
 | Convention | mid-year | toggle with `--no-mid-year` |
 | Finance leases | treated as debt | `balance_sheet.finance_leases_as_debt`; liability override `balance_sheet.finance_lease_liabilities` |
@@ -367,6 +368,13 @@ more in absolute terms (`9` instead of `0.09`), D&A or capex shares outside 0-1,
   and EBITDA they produce are what the TV is built on. The report warns when terminal
   growth is above the risk-free rate or less than 2pp below the WACC, where the Gordon TV
   becomes extremely sensitive.
+- **Valuation date is the last fiscal year end.** Cash flows are discounted to the period
+  end of the latest 10-K (year 1 is the first full year after it), and debt and cash are
+  taken at that date. The result is compared with today's share price and a later
+  cover-page share count without a stub period or roll-forward. For the Microsoft run
+  (FY end 30 June 2026, price of 2 November 2026, 125 days later) rolling EV forward at
+  the 9.24% WACC would add about 3.1%, before the cash flows received in between. The
+  report prints both dates.
 - **Equity bridge is simplified.** Finance leases are included (see "Leases"), operating
   leases deliberately stay in EBIT as rent. Minority interests, preferred stock, pension
   deficits, equity-method investments and long-term investment portfolios are *not*

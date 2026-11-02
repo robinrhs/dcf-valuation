@@ -184,3 +184,22 @@ def test_low_roic_warning_matches_the_sensitivity_grid(company, quote, tmp_path)
     assert value_driver_tv(0.025) < value_driver_tv(0.02) < value_driver_tv(0.015)
     # At the scenario's own g it equals the Gordon TV, because RONIC was implied from it.
     assert value_driver_tv(0.02) == pytest.approx(result.gordon.terminal_value)
+
+
+def test_manual_quote_is_not_stamped_with_today():
+    quote = resolve_quote("EXMPL", None, price_override=30.0, beta_override=1.1)
+    assert quote.as_of is None
+    dated = resolve_quote("EXMPL", None, 30.0, 1.1, override_as_of="2026-10-15")
+    assert dated.as_of == "2026-10-15"
+    # Mixed: the provider's date stays, the manual part says it has no date.
+    mixed = resolve_quote("EXMPL", StaticProvider(price=50.0, beta=1.3), None, 0.9)
+    assert mixed.source == "static + manual override (date not stated)"
+
+
+def test_market_as_of_from_yaml(tmp_path):
+    cfg = tmp_path / "dated.yaml"
+    cfg.write_text("market: {price: 30, beta: 1.1, as_of: 2026-10-15}\n")
+    assert load_assumptions(cfg).market.as_of == "2026-10-15"  # YAML date -> ISO text
+    cfg.write_text("market: {as_of: 15.10.2026}\n")
+    with pytest.raises(ValueError, match="YYYY-MM-DD"):
+        load_assumptions(cfg)

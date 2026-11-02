@@ -79,7 +79,12 @@ def render(result: DcfResult) -> str:
         f"Financials: SEC EDGAR companyfacts, annual 10-K, latest FY{latest.fiscal_year} "
         f"(period end {latest.period_end})"
     )
-    out.append(f"Market data: {r.quote.source}, as of {r.quote.as_of}")
+    as_of = f"as of {r.quote.as_of}" if r.quote.as_of else "date not stated"
+    out.append(f"Market data: {r.quote.source}, {as_of}")
+    out.append(
+        f"Valuation date: FY{latest.fiscal_year} period end {latest.period_end} (cash flows, "
+        "debt and cash); not rolled forward to the market-data date"
+    )
     out.append(
         f"Convention: {'mid-year' if r.mid_year else 'end-of-year'} discounting, "
         f"{r.scenario.years}-year explicit forecast"
@@ -273,6 +278,8 @@ def export(result: DcfResult, out_dir: str | Path) -> list[Path]:
         "latest_fiscal_year": result.company.latest.fiscal_year,
         "price": result.quote.price,
         "market_data_source": result.quote.source,
+        "market_data_as_of": result.quote.as_of,
+        "valuation_date": result.company.latest.period_end,
         "wacc": result.wacc.wacc,
         "mid_year_convention": result.mid_year,
         "bridge": {
