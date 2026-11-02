@@ -153,3 +153,34 @@ def test_warns_when_terminal_roic_is_below_wacc(company, quote, tmp_path):
     # The default example case earns well above its WACC on new capital: no warning.
     base = run_dcf(company, quote, load_assumptions(CONFIG), with_sensitivity=False)
     assert not any("below the WACC" in w for w in base.warnings)
+
+
+def test_low_roic_warning_matches_the_sensitivity_grid(company, quote, tmp_path):
+    """The warning must not claim that a higher g lowers this model's value.
+
+    The Gordon TV holds UFCF_N fixed, so every grid row rises with g even when the
+    implied return on new capital is below the WACC. Only a value-driver TV, where the
+    reinvestment grows with g, falls with g in that case.
+    """
+    cfg = tmp_path / "low_roic.yaml"
+    cfg.write_text(
+        "scenarios:\n  base:\n    capex_pct_revenue_target: 0.12\n    terminal_growth: 0.02\n"
+    )
+    result = run_dcf(company, quote, load_assumptions(cfg))
+    roic, wacc = result.checks.implied_terminal_roic, result.wacc.wacc
+    assert roic is not None and roic < wacc
+    for row in result.sensitivity.values:
+        assert all(a < b for a, b in zip(row, row[1:], strict=False))
+    (message,) = [w for w in result.warnings if "below the WACC" in w]
+    assert "lowers the value" not in message
+    assert "overstates" in message
+
+    # Value-driver TV at the same RONIC, written out by hand: it falls as g rises.
+    final = result.projection[-1]
+
+    def value_driver_tv(g: float) -> float:
+        return final.nopat * (1 + g) * (1 - g / roic) / (wacc - g)
+
+    assert value_driver_tv(0.025) < value_driver_tv(0.02) < value_driver_tv(0.015)
+    # At the scenario's own g it equals the Gordon TV, because RONIC was implied from it.
+    assert value_driver_tv(0.02) == pytest.approx(result.gordon.terminal_value)

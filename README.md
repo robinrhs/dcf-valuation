@@ -384,8 +384,12 @@ updated** before you rely on the output.
 - **Taxes:** one flat rate on EBIT. There are no NOLs, no deferred taxes and no negative-EBIT
   tax asymmetry.
 - **Implied ROIC check.** If the return on new capital implied by the final year is below
-  the WACC, the report warns that terminal growth destroys value. This happens, for example,
-  with the generic default scenarios on Microsoft (no `config/msft.yaml`).
+  the WACC, the report warns. In a value-driver model, where reinvestment grows with `g`
+  ($TV = NOPAT_{N+1} (1 - g / RONIC) / (WACC - g)$), growth at such a return destroys value.
+  The Gordon TV used here holds `UFCF_N` fixed while `g` changes, so its value still rises
+  with `g` (as the sensitivity grid shows) and it overstates what extra growth is worth.
+  This happens, for example, with the generic default scenarios on Microsoft (no
+  `config/msft.yaml`).
 - **CAPM inputs are estimates:** the regression beta is backward-looking, and the ERP and
   risk-free rate change daily.
 - **Poor fit** for banks and insurers (debt is operating, not financing), for early-stage

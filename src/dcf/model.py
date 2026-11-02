@@ -211,11 +211,16 @@ def terminal_warnings(
         messages.append("Final-year EBITDA is not positive: the exit-multiple TV is meaningless")
     roic = checks.implied_terminal_roic
     if roic is not None and roic < wacc:
-        # g = reinvestment rate x ROIC. If new capital earns less than it costs, every
-        # extra point of terminal growth destroys value instead of creating it.
+        # g = reinvestment rate x ROIC. In a value-driver model, where reinvestment rises
+        # with g (TV = NOPAT_{N+1} (1 - g / RONIC) / (WACC - g)), growth at a return below
+        # the WACC destroys value. The Gordon TV used here holds UFCF_N - and therefore the
+        # reinvestment - fixed while g changes, so its value still rises with g.
         messages.append(
             f"Implied return on new capital ({roic:.1%}) is below the WACC ({wacc:.2%}): "
-            "terminal growth destroys value in this scenario, so a higher g lowers the value"
+            "the final year reinvests a lot for little growth. In a value-driver model "
+            "(TV = NOPAT_N+1 x (1 - g/RONIC) / (WACC - g)) more growth at this return would "
+            "destroy value; this Gordon TV holds UFCF_N fixed, so it overstates what a "
+            "higher g is worth (the sensitivity grid still rises with g)"
         )
     return messages
 
