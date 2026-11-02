@@ -219,3 +219,10 @@ def test_warns_when_a_ratio_input_switches_tag_inside_the_window(company, quote)
         "FY2023-FY2025 RevenueFromContractWithCustomerExcludingAssessedTax): check that the "
         "years are comparable"
     ]
+
+
+def test_yfinance_provider_is_blocked_in_tests():
+    from dcf.market import YFinanceProvider
+
+    with pytest.raises(AssertionError, match="Network access is not allowed"):
+        YFinanceProvider().get_quote("MSFT")

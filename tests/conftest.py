@@ -16,13 +16,19 @@ def company_facts() -> dict:
 
 @pytest.fixture(autouse=True)
 def _no_network(monkeypatch):
-    """Fail loudly if any test tries to reach the internet."""
+    """Fail loudly if any test tries to reach the internet.
+
+    The SEC client uses ``requests``. yfinance does not: it talks HTTP through
+    ``curl_cffi``, so blocking ``requests`` alone would not stop it. The market data
+    provider is therefore blocked directly as well.
+    """
 
     def _blocked(*args, **kwargs):
         raise AssertionError("Network access is not allowed in tests")
 
     monkeypatch.setattr("requests.get", _blocked)
     monkeypatch.setattr("requests.Session.request", _blocked)
+    monkeypatch.setattr("dcf.market.YFinanceProvider.get_quote", _blocked)
 
 
 @pytest.fixture

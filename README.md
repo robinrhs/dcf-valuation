@@ -456,8 +456,9 @@ uv run pytest
 uv run ruff check . && uv run ruff format --check .
 ```
 
-The tests run fully offline (network calls are blocked in `conftest.py`) against a small
-hand-made `companyfacts`-shaped fixture. They cover discounting, the mid-year toggle, the
+The tests run fully offline against a small hand-made `companyfacts`-shaped fixture.
+`conftest.py` blocks HTTP through `requests` (used by the SEC client) and the yfinance
+provider (which uses `curl_cffi`, not `requests`). They cover discounting, the mid-year toggle, the
 Gordon formula, the exit-multiple TV, the implied multiple/growth round trip, bridge
 arithmetic, WACC, the reverse DCF round trip and XBRL tag fallbacks (incl. restatements and
 quarterly facts inside a 10-K). There are also tests for finance leases, the share count,
