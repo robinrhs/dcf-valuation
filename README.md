@@ -59,10 +59,11 @@ Useful flags: `--years 5..10`, `--mid-year / --no-mid-year`, `--price`, `--beta`
 `--offline` (cache and YAML only), `--refresh` (ignore the cache), `--export DIR` (CSV of
 the projection and sensitivity grid plus a JSON summary).
 
-If `SEC_USER_AGENT` is not set, a neutral placeholder (`dcf-valuation research-tool
-admin@example.com`) is sent and a note is printed. Please set your own. Responses are
-cached in `.cache/sec/` (git-ignored, 7-day freshness) and requests are throttled to five
-per second, below the SEC's limit of ten.
+If `SEC_USER_AGENT` is not set, the tool refuses to download from the SEC and tells you
+how to set it (format example: `dcf-valuation research-tool admin@example.com`, but use
+your own name and address). Cached data (`--offline`) and `--fixture` runs work without it.
+Responses are cached in `.cache/sec/` (git-ignored, 7-day freshness) and requests are
+throttled to five per second, below the SEC's limit of ten.
 
 ## Example output
 
@@ -89,21 +90,23 @@ Discount factor               0.957    0.876    0.802    0.735    0.673
 PV of UFCF                      185      188      185      179      171
 
 TERMINAL VALUE AND EQUITY BRIDGE
-USD m                       Gordon growth  Exit multiple
---------------------------------------------------------
-Assumption                       g = 2.5%   11.0x EBITDA
-Terminal value (year N)             3,883          4,604
-PV of terminal value                2,612          2,964
-PV of explicit FCF                    908            908
-Enterprise value                    3,520          3,872
-- Debt                                260            260
-+ Cash & ST investments               280            280
-= Equity value                      3,540          3,892
-Diluted shares (m)                     99             99
-Value per share (USD)               35.76          39.31
-Current price (USD)                 30.00          30.00
-Upside / downside                   19.2%          31.0%
-TV share of EV                      74.2%          76.6%
+USD m                        Gordon growth  Exit multiple
+---------------------------------------------------------
+Assumption                        g = 2.5%   11.0x EBITDA
+Terminal value (year N)              3,883          4,604
+PV of terminal value                 2,612          2,964
+PV of explicit FCF                     908            908
+Enterprise value                     3,520          3,872
+- Debt                                 260            260
+- Finance lease liabilities              0              0
++ Cash & ST investments                280            280
+= Equity value                       3,540          3,892
+Diluted shares (m)                      99             99
+Value per share (USD)                35.76          39.31
+Current price (USD)                  30.00          30.00
+Upside / downside                    19.2%          31.0%
+TV share of EV                       74.2%          76.6%
+Share count: FY2025 weighted-average diluted shares (10-K)
 
 CROSS-CHECKS
   Gordon TV implies an exit multiple of      9.7x EBITDA
@@ -131,16 +134,22 @@ FY2026 10-K (year ended 30 June 2026) and the yfinance price at run time. Excerp
 
 ```text
 HISTORICALS
-USD m (10-K)                 FY2022   FY2023   FY2024   FY2025   FY2026
------------------------------------------------------------------------
-Revenue                     198,270  211,915  245,122  281,724  331,839
-  growth                        n/a     6.9%    15.7%    14.9%    17.8%
-EBIT (operating income)      83,383   88,523  109,433  128,528  155,237
-  margin                      42.1%    41.8%    44.6%    45.6%    46.8%
-D&A                          14,600   13,500   20,000   28,000   39,000
-Capex                        23,886   28,107   44,477   64,551  115,948
-Operating NWC               -16,535  -17,808  -21,408  -21,436  -33,108
-UFCF (t = 21%)                  n/a   56,599   65,575   65,014   57,361
+USD m (10-K)                   FY2022   FY2023   FY2024   FY2025   FY2026
+-------------------------------------------------------------------------
+Revenue                       198,270  211,915  245,122  281,724  331,839
+  growth                          n/a     6.9%    15.7%    14.9%    17.8%
+EBIT (operating income)        83,383   88,523  109,433  128,528  155,237
+  margin                        42.1%    41.8%    44.6%    45.6%    46.8%
+D&A                            15,580   14,852   21,800   31,408   44,403
+Capex incl. fin. leases        28,120   31,235   56,110   85,062  140,556
+  of which finance leases       4,234    3,128   11,633   20,511   24,608
+Operating NWC                 -16,535  -17,808  -21,408  -21,436  -33,108
+UFCF (t = 21%)                    n/a   54,823   55,742   47,911   38,156
+Total debt                     49,781   47,237   51,630   43,151   40,294
+Finance lease liabilities      14,902   17,067   27,145   46,172   66,594
+Operating lease liab. (info)   13,717   15,137   19,077   22,861   21,925
+Cash + ST investments         104,757  111,262   75,543   94,565   76,843
+Diluted shares (m)              7,540    7,472    7,469    7,465    7,453
 
 WACC
 Input                       Value
@@ -151,39 +160,45 @@ Equity risk premium         4.20%
 Cost of equity (CAPM)       9.37%
 Pre-tax cost of debt        5.58%
 After-tax cost of debt      4.41%
-Equity weight E/V           99.0%
-Debt weight D/V              1.0%
-WACC                        9.32%
+Equity weight E/V           97.3%
+Debt weight D/V              2.7%
+WACC                        9.24%
 
 TERMINAL VALUE AND EQUITY BRIDGE (base)
-USD m                       Gordon growth  Exit multiple
---------------------------------------------------------
-Assumption                       g = 3.0%   18.0x EBITDA
-Enterprise value                2,422,097      4,034,669
-= Equity value                  2,458,646      4,071,218
-Value per share (USD)              329.89         546.25
-Current price (USD)                524.52         524.52
-TV share of EV                      72.9%          83.7%
+USD m                        Gordon growth  Exit multiple
+---------------------------------------------------------
+Assumption                        g = 3.0%   18.0x EBITDA
+Enterprise value                 2,388,161      4,045,231
+- Debt                              40,294         40,294
+- Finance lease liabilities         66,594         66,594
++ Cash & ST investments             76,843         76,843
+= Equity value                   2,358,116      4,015,186
+Diluted shares (m)                   7,450          7,450
+Value per share (USD)               316.52         538.94
+Current price (USD)                 525.07         525.07
+TV share of EV                       75.3%          85.4%
+Share count: shares outstanding 2026-10-22 (cover page) + FY2026 dilution (diluted - basic weighted average)
 
 CROSS-CHECKS
   Gordon TV implies an exit multiple of      9.4x EBITDA
   Exit-multiple TV implies perpetual growth  5.9%
+  Implied ROIC on new capital (final year)   38.0%
 
 REVERSE DCF
-  The price of USD 524.52 implies constant revenue growth of 17.0% p.a. for 7 years
+  The price of USD 525.07 implies constant revenue growth of 17.4% p.a. for 7 years
 
-SCENARIO SUMMARY (price USD 524.52, WACC 9.32%)
+SCENARIO SUMMARY (price USD 525.07, WACC 9.24%)
 Scenario    Growth Y1  Margin YN  Gordon/share  Upside  Exit/share  Upside
 --------------------------------------------------------------------------
-base            15.0%      44.0%        329.89  -37.1%      546.25    4.1%
-bull            19.0%      47.0%        439.93  -16.1%      770.17   46.8%
-bear            10.0%      40.0%        233.49  -55.5%      359.77  -31.4%
+base            15.0%      44.0%        316.52  -39.7%      538.94    2.6%
+bull            19.0%      47.0%        427.97  -18.5%      766.54   46.0%
+bear            10.0%      40.0%        219.31  -58.2%      349.55  -33.4%
 ```
 
 (Rows of the bridge table and the sensitivity grid are omitted here for length. Beta is
 printed rounded to two decimals; the calculation uses the full value.)
 
-How to read this: with a 9.3% WACC and 3% terminal growth, the Gordon method is far below
+How to read this: with a 9.2% WACC and 3% terminal growth, the Gordon method is far below
 the market price, while an 18x exit multiple lands close to it. The cross-check explains
 the gap: 18x EBITDA is equivalent to growing free cash flow at about 5.9% forever. The
 reverse DCF tells the same story from another angle. It does **not** show that the share
@@ -191,9 +206,16 @@ is over- or undervalued. It shows how much the answer depends on terminal assump
 
 ![MSFT value per share by scenario and terminal method](docs/msft_scenarios.png)
 
+(Chart saved by the notebook run described below.)
+
+Finance leases matter for Microsoft: the USD 66.6bn finance-lease liability is larger than
+its USD 40.3bn of financial debt and costs about USD 8.94 per share in the bridge, and the
+USD 24.6bn of data-centre assets obtained under finance leases in FY2026 lift capex from
+35% to 42% of revenue (see "Leases" below).
+
 The full walk-through, with commentary, is in
 [`notebooks/msft_case_study.ipynb`](notebooks/msft_case_study.ipynb). It was executed with
-live data on 2 November 2026, a few minutes before the CLI run above, so the share price
+live data on 2 November 2026, shortly after the CLI run above, so the share price
 differs slightly.
 
 ## Method
@@ -214,7 +236,9 @@ Each line item has an ordered list of fallback tags, applied year by year:
 | NWC items | `AccountsReceivableNetCurrent`, `InventoryNet`, `AccountsPayableCurrent`, `ContractWithCustomerLiabilityCurrent` / `DeferredRevenueCurrent` |
 | Cash | `CashAndCashEquivalentsAtCarryingValue` (+ `ShortTermInvestments` / `MarketableSecuritiesCurrent`) |
 | Debt | `LongTermDebt` or `LongTermDebtNoncurrent + LongTermDebtCurrent`, plus `ShortTermBorrowings` / `CommercialPaper` |
-| Diluted shares | `WeightedAverageNumberOfDilutedSharesOutstanding` |
+| Finance leases | `FinanceLeaseLiability` (or current + noncurrent), `RightOfUseAssetObtainedInExchangeForFinanceLeaseLiability`, `FinanceLeaseRightOfUseAssetAmortization` |
+| Operating leases (info only) | `OperatingLeaseLiability` (or current + noncurrent) |
+| Shares | `WeightedAverageNumberOfDilutedSharesOutstanding`, `WeightedAverageNumberOfSharesOutstandingBasic`, cover page `dei:EntityCommonStockSharesOutstanding` (10-K or 10-Q) |
 
 Missing items are reported as warnings and treated as zero where they are used.
 
@@ -275,9 +299,32 @@ capital in the final year, `ROIC = g / reinvestment rate` with reinvestment rate
 
 ### 6. Equity bridge
 
-$$\text{Equity} = EV - \text{Debt} + \text{Cash \& ST investments} \qquad \text{Value per share} = \frac{\text{Equity}}{\text{Diluted shares}}$$
+$$\text{Equity} = EV - \text{Debt} - \text{Finance lease liabilities} + \text{Cash \& ST investments} \qquad \text{Value per share} = \frac{\text{Equity}}{\text{Diluted shares}}$$
 
 Upside = value per share / current price - 1.
+
+**Share count.** The denominator is the latest share count from a 10-K or 10-Q cover page
+(`dei:EntityCommonStockSharesOutstanding`, usually a few weeks after the period end) plus
+last year's dilution, measured as diluted minus basic weighted-average shares. A fiscal-year
+weighted average would lag buybacks. If the cover-page figure is missing, older than the
+fiscal year end, or more than 25% away from the weighted average (for example because it
+covers only one share class), the model falls back to the weighted-average diluted count.
+`market.diluted_shares` in YAML overrides both.
+
+**Leases.** Under ASC 842 a finance lease is economically an asset bought with borrowed
+money. With `balance_sheet.finance_leases_as_debt: true` (the default) the model treats it
+that way on both sides, so the leased assets are not free:
+
+- the finance-lease liability is subtracted in the bridge and counts as debt `D` in the
+  WACC weights;
+- right-of-use assets obtained in exchange for new finance-lease liabilities are added to
+  historical capex (they never appear in cash capex);
+- finance-lease ROU amortisation is added to historical D&A when D&A was rebuilt from
+  note-level `Depreciation` tags. Cash-flow-statement totals such as
+  `DepreciationDepletionAndAmortization` are assumed to include it already.
+
+Operating leases are left inside EBIT: their rent is an operating cost in UFCF, so also
+subtracting the liability would count them twice. The liability is shown for information.
 
 ### 7. Sensitivity and reverse DCF
 
@@ -303,23 +350,42 @@ updated** before you rely on the output.
 | Beta, price | live | yfinance (Yahoo beta: 5-year monthly vs. S&P 500); overridable in YAML |
 | Horizon | 5 years (MSFT case: 7) | Allowed range 5-10 |
 | Convention | mid-year | toggle with `--no-mid-year` |
+| Finance leases | treated as debt | `balance_sheet.finance_leases_as_debt`; liability override `balance_sheet.finance_lease_liabilities` |
+| Share count | cover page + dilution | fallback: weighted-average diluted; override `market.diluted_shares` |
 
 ## Limitations: when this DCF is weak
 
-- **Terminal value dominates.** In the runs above, 70-85% of EV comes from the TV, so the
-  result is mainly a statement about WACC, `g` and the exit multiple.
-- **Equity bridge is simplified.** Operating leases, minority interests, preferred stock,
-  pension deficits, equity-method investments and long-term investment portfolios are
-  *not* included. Book debt is used as a proxy for market value. Stock-based compensation
-  is not treated as a cash cost.
+- **Terminal value dominates.** In the runs above (all three MSFT scenarios and the demo),
+  72-88% of EV comes from the TV, so the result is mainly a statement about WACC, `g` and
+  the exit multiple. The explicit years still matter, because the terminal-year cash flow
+  and EBITDA they produce are what the TV is built on.
+- **Equity bridge is simplified.** Finance leases are included (see "Leases"), operating
+  leases deliberately stay in EBIT as rent. Minority interests, preferred stock, pension
+  deficits, equity-method investments and long-term investment portfolios are *not*
+  included. Book values of debt and lease liabilities are used as proxies for market value,
+  and leases are costed at the same pre-tax rate as bonds. Stock-based compensation is not
+  treated as a cash cost.
+- **Lease data is only as good as the tags.** Whether a filer's note-level depreciation
+  already contains finance-lease ROU amortisation is not visible in XBRL. For Microsoft the
+  model adds USD 5.4bn (FY2026) to the `Depreciation + AmortizationOfIntangibleAssets`
+  proxy. If that amount were already included, D&A would be overstated by 1.6% of revenue.
+  Filers that do not tag ROU additions get capex without finance leases.
+- **Share count is an approximation.** Cover-page shares plus last year's diluted-minus-basic
+  gap stands in for a full treasury-stock calculation at today's share price. It ignores
+  options that move in or out of the money and convertible bonds that are not dilutive in
+  the reported year.
 - **XBRL coverage is imperfect.** Companies use custom extension tags that the
   `companyfacts` API does not include. For Microsoft, total D&A is not available under a
-  standard tag, so the loader uses `Depreciation + AmortizationOfIntangibleAssets`, which
-  may understate it. Always check the `historicals` output against the 10-K.
+  standard tag, so the loader uses `Depreciation + AmortizationOfIntangibleAssets` (plus
+  finance-lease ROU amortisation), which can still differ from the cash flow statement.
+  Always check the `historicals` output against the 10-K.
 - **Fiscal-year labels** are the calendar year of the period end. Fiscal years are not
   calendarised across companies.
 - **Taxes:** one flat rate on EBIT. There are no NOLs, no deferred taxes and no negative-EBIT
   tax asymmetry.
+- **Implied ROIC check.** If the return on new capital implied by the final year is below
+  the WACC, the report warns that terminal growth destroys value. This happens, for example,
+  with the generic default scenarios on Microsoft (no `config/msft.yaml`).
 - **CAPM inputs are estimates:** the regression beta is backward-looking, and the ERP and
   risk-free rate change daily.
 - **Poor fit** for banks and insurers (debt is operating, not financing), for early-stage
@@ -369,7 +435,11 @@ The tests run fully offline (network calls are blocked in `conftest.py`) against
 hand-made `companyfacts`-shaped fixture. They cover discounting, the mid-year toggle, the
 Gordon formula, the exit-multiple TV, the implied multiple/growth round trip, bridge
 arithmetic, WACC, the reverse DCF round trip and XBRL tag fallbacks (incl. restatements and
-quarterly facts inside a 10-K).
+quarterly facts inside a 10-K). There are also tests for finance leases, the share count,
+input validation and the SEC download path against a stubbed `requests.get` (User-Agent
+header, cache, 429 retry). A golden test rebuilds the fixture's base case by hand
+(35.76 / 39.31 per share) without calling the model's own maths, so a change anywhere in
+the pipeline shows up as a failing test.
 
 To re-run the notebook: `uv sync --group notebook`, then
 `cd notebooks && uv run jupyter nbconvert --to notebook --execute --inplace msft_case_study.ipynb`.
