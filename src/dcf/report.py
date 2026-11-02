@@ -145,6 +145,7 @@ def render(result: DcfResult) -> str:
         ["TV share of EV", pct(g.terminal_share_of_ev), pct(x.terminal_share_of_ev)],
     ]
     out.append(table(["USD m", "Gordon growth", "Exit multiple"], bridge_rows))
+    out.append(f"Share count: {r.bridge.shares_source}")
 
     out.append("\nCROSS-CHECKS")
     ck = r.checks

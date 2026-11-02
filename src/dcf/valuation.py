@@ -37,6 +37,7 @@ class BridgeInputs:
     diluted_shares: float
     share_price: float
     lease_liabilities: float = 0.0  # finance leases, treated as debt-like claims
+    shares_source: str = "weighted-average diluted shares (10-K)"  # shown in the report
 
     @property
     def debt_like(self) -> float:

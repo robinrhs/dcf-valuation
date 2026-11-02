@@ -90,6 +90,16 @@ def include_finance_leases(year: FiscalYearData) -> FiscalYearData:
     )
 
 
+def diluted_share_count(shares_outstanding: float, diluted_wa: float, basic_wa: float) -> float:
+    """Shares outstanding today plus the dilution seen in the last fiscal year.
+
+    Diluted minus basic weighted-average shares is the number of shares that in-the-money
+    options, RSUs and convertibles would add. A negative gap cannot happen in a correct
+    filing, so it is floored at zero.
+    """
+    return shares_outstanding + max(0.0, diluted_wa - basic_wa)
+
+
 def historical_ufcf(years: list[FiscalYearData], tax_rate: float) -> list[float | None]:
     """Reported-basis unlevered FCF: EBIT * (1 - t) + D&A - capex - dNWC.
 

@@ -3,7 +3,13 @@ import json
 import pytest
 
 from dcf.sec_client import SecClient, SecError, sec_user_agent
-from dcf.xbrl import annual_values, extract_fiscal_years, is_annual_fact, missing_items
+from dcf.xbrl import (
+    annual_values,
+    extract_fiscal_years,
+    is_annual_fact,
+    latest_shares_outstanding,
+    missing_items,
+)
 
 M = 1_000_000
 
@@ -87,3 +93,20 @@ def test_user_agent_comes_from_environment(monkeypatch):
     assert sec_user_agent() == "Jane Doe jane@example.org"
     monkeypatch.delenv("SEC_USER_AGENT")
     assert sec_user_agent() is None
+
+
+def test_latest_cover_page_share_count(company_facts, add_fact):
+    assert latest_shares_outstanding(company_facts) is None  # fixture has no dei facts
+    dei = {"unit": "shares", "taxonomy": "dei"}
+    add_fact(company_facts, "EntityCommonStockSharesOutstanding", "2026-01-31", 97e6, **dei)
+    add_fact(
+        company_facts,
+        "EntityCommonStockSharesOutstanding",
+        "2026-04-24",
+        96e6,
+        form="10-Q",
+        fp="Q1",
+        filed="2026-05-01",
+        **dei,
+    )
+    assert latest_shares_outstanding(company_facts) == (96e6, "2026-04-24")

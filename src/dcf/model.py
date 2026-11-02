@@ -9,7 +9,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 
 from dcf.assumptions import Assumptions
-from dcf.financials import HistoricalSummary, include_finance_leases, summarize
+from dcf.financials import (
+    HistoricalSummary,
+    diluted_share_count,
+    include_finance_leases,
+    summarize,
+)
 from dcf.market import MarketQuote
 from dcf.projection import ProjectionYear, Scenario, project, resolve_scenario, with_constant_growth
 from dcf.reverse_dcf import implied_growth
@@ -24,7 +29,16 @@ from dcf.valuation import (
     value_gordon,
 )
 from dcf.wacc import WaccInputs, WaccResult, compute_wacc
-from dcf.xbrl import FiscalYearData, extract_fiscal_years, missing_items
+from dcf.xbrl import (
+    FiscalYearData,
+    extract_fiscal_years,
+    latest_shares_outstanding,
+    missing_items,
+)
+
+# If the cover-page share count differs from the fiscal-year weighted average by more than
+# this, something is off (e.g. it covers only one share class): fall back to the average.
+MAX_SHARE_COUNT_GAP = 0.25
 
 
 @dataclass(frozen=True)
@@ -33,6 +47,8 @@ class CompanyData:
     name: str
     cik: int | None
     fiscal_years: list[FiscalYearData]
+    shares_outstanding: float | None = None  # latest cover-page share count
+    shares_outstanding_date: str | None = None
 
     @property
     def latest(self) -> FiscalYearData:
@@ -76,7 +92,39 @@ def company_from_facts(ticker: str, facts: dict, max_years: int = 5) -> CompanyD
     years = extract_fiscal_years(facts, max_years=max_years)
     if not years:
         raise ValueError(f"No annual 10-K revenue found for {ticker}")
-    return CompanyData(ticker.upper(), facts.get("entityName", ticker), facts.get("cik"), years)
+    cover = latest_shares_outstanding(facts)
+    return CompanyData(
+        ticker=ticker.upper(),
+        name=facts.get("entityName", ticker),
+        cik=facts.get("cik"),
+        fiscal_years=years,
+        shares_outstanding=cover[0] if cover else None,
+        shares_outstanding_date=cover[1] if cover else None,
+    )
+
+
+def select_share_count(company: CompanyData, override: float | None) -> tuple[float, str]:
+    """Share count for value per share, and a description of where it came from.
+
+    Preferred: latest cover-page shares outstanding + last year's dilution (diluted minus
+    basic weighted average). The fiscal-year weighted average alone lags buybacks and
+    issuance, so it is only the fallback.
+    """
+    if override:
+        return override, "manual override (market.diluted_shares)"
+    latest = company.latest
+    diluted, basic = latest.diluted_shares, latest.basic_shares
+    cover, cover_date = company.shares_outstanding, company.shares_outstanding_date
+    if cover and cover_date and cover_date >= latest.period_end and diluted and basic:
+        shares = diluted_share_count(cover, diluted, basic)
+        if abs(shares / diluted - 1) <= MAX_SHARE_COUNT_GAP:
+            return shares, (
+                f"shares outstanding {cover_date} (cover page) + FY{latest.fiscal_year} "
+                "dilution (diluted - basic weighted average)"
+            )
+    if not diluted:
+        raise ValueError("Diluted shares missing in filings: set market.diluted_shares in YAML")
+    return diluted, f"FY{latest.fiscal_year} weighted-average diluted shares (10-K)"
 
 
 def prepare_company(company: CompanyData, assumptions: Assumptions) -> CompanyData:
@@ -90,9 +138,7 @@ def build_bridge(company: CompanyData, assumptions: Assumptions, price: float) -
     """Debt, leases, cash and share count from the latest 10-K, unless overridden in YAML."""
     latest = company.latest
     sheet = assumptions.balance_sheet
-    shares = assumptions.market.diluted_shares or latest.diluted_shares
-    if not shares:
-        raise ValueError("Diluted shares missing in filings: set market.diluted_shares in YAML")
+    shares, shares_source = select_share_count(company, assumptions.market.diluted_shares)
     if sheet.finance_lease_liabilities is not None:
         leases = sheet.finance_lease_liabilities
     elif sheet.finance_leases_as_debt:
@@ -105,6 +151,7 @@ def build_bridge(company: CompanyData, assumptions: Assumptions, price: float) -
         diluted_shares=shares,
         share_price=price,
         lease_liabilities=leases,
+        shares_source=shares_source,
     )
 
 

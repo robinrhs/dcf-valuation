@@ -94,11 +94,19 @@ TAG_RULES: tuple[TagRule, ...] = (
             ),
         ),
     ),
-    # Diluted weighted-average shares: the denominator for value per share.
+    # Weighted-average shares over the fiscal year. Diluted minus basic is the number of
+    # extra shares from options, RSUs and convertibles (treasury stock method), which is
+    # added to the latest share count in the bridge (see model.select_share_count).
     TagRule(
         "diluted_shares",
         "duration",
         (("WeightedAverageNumberOfDilutedSharesOutstanding",),),
+        unit="shares",
+    ),
+    TagRule(
+        "basic_shares",
+        "duration",
+        (("WeightedAverageNumberOfSharesOutstandingBasic",),),
         unit="shares",
     ),
     # Operating working capital components (balance sheet, year end).
@@ -191,6 +199,7 @@ class FiscalYearData:
     income_tax_expense: float | None = None
     pretax_income: float | None = None
     diluted_shares: float | None = None
+    basic_shares: float | None = None
     receivables: float | None = None
     inventory: float | None = None
     payables: float | None = None
@@ -318,6 +327,31 @@ def extract_fiscal_years(facts: dict, max_years: int = 5) -> list[FiscalYearData
             )
         )
     return years
+
+
+# Filings whose cover page states the number of shares outstanding.
+COVER_PAGE_FORMS = {"10-K", "10-K/A", "10-Q", "10-Q/A"}
+
+
+def latest_shares_outstanding(facts: dict) -> tuple[float, str] | None:
+    """Most recent share count from a filing cover page (dei:EntityCommonStockSharesOutstanding).
+
+    The cover page reports shares outstanding a few weeks after the period end, so it is
+    closer to the valuation date than the fiscal-year weighted average and already reflects
+    recent buybacks. Returns (shares, as-of date) or None if not reported.
+    """
+    entries = (
+        facts.get("facts", {})
+        .get("dei", {})
+        .get("EntityCommonStockSharesOutstanding", {})
+        .get("units", {})
+        .get("shares", [])
+    )
+    cover = [f for f in entries if f.get("form") in COVER_PAGE_FORMS]
+    if not cover:
+        return None
+    latest = max(cover, key=lambda f: (f["end"], f.get("filed", "")))
+    return float(latest["val"]), latest["end"]
 
 
 def missing_items(year: FiscalYearData) -> list[str]:

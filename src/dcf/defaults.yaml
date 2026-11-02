@@ -12,7 +12,8 @@
 market:
   price: null          # null -> market data provider (yfinance); set a number to override
   beta: null           # null -> provider beta (Yahoo: 5y monthly vs. S&P 500)
-  diluted_shares: null # null -> weighted-average diluted shares from the latest 10-K
+  diluted_shares: null # null -> latest cover-page shares + 10-K dilution (fallback:
+                       #         weighted-average diluted shares of the latest 10-K)
 
 wacc:
   # 10-year US Treasury constant-maturity yield, FRED series DGS10, value of 2026-10-29.
