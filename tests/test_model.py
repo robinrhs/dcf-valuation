@@ -119,3 +119,10 @@ def test_wacc_override_is_used(company, quote):
 def test_unknown_scenario_raises(company, quote, assumptions):
     with pytest.raises(ValueError, match="Unknown scenario"):
         run_dcf(company, quote, assumptions, "moonshot")
+
+
+def test_provider_quote_is_validated_too():
+    with pytest.raises(ValueError, match="positive"):
+        resolve_quote("EXMPL", StaticProvider(price=0.0, beta=1.0))
+    with pytest.raises(ValueError, match="plausible"):
+        resolve_quote("EXMPL", StaticProvider(price=10.0, beta=float("nan")))

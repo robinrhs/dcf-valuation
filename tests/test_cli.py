@@ -49,3 +49,14 @@ def test_historicals_command(capsys):
 def test_offline_without_price_fails_cleanly(capsys):
     assert main(["value", "EXMPL", "--fixture", FIXTURE, "--offline"]) == 1
     assert "market.price" in capsys.readouterr().err
+
+
+def test_zero_or_negative_price_fails_cleanly(capsys):
+    for price in ("0", "-5"):
+        assert main(["value", "EXMPL", *OFFLINE, "--price", price]) == 1
+        assert "Share price must be a positive number" in capsys.readouterr().err
+
+
+def test_implausible_beta_fails_cleanly(capsys):
+    assert main(["value", "EXMPL", *OFFLINE, "--beta", "11"]) == 1
+    assert "plausible range" in capsys.readouterr().err

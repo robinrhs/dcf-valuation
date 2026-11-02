@@ -8,6 +8,7 @@ implement ``get_quote``. Values set in the YAML file always win over the provide
 
 from __future__ import annotations
 
+import math
 import warnings
 from dataclasses import dataclass
 from datetime import date
@@ -16,6 +17,11 @@ from typing import Protocol
 
 class MarketDataError(RuntimeError):
     """Raised when price or beta cannot be obtained."""
+
+
+# Plausibility band for beta. Almost all listed equities have betas between about 0 and 3;
+# a value outside -1..5 is far more likely a typo or a data error than a real estimate.
+MIN_BETA, MAX_BETA = -1.0, 5.0
 
 
 @dataclass(frozen=True)
@@ -64,6 +70,21 @@ class StaticProvider:
         return MarketQuote(ticker, self.price, self.beta, self.source, date.today().isoformat())
 
 
+def validate_quote(price: float, beta: float) -> None:
+    """Reject market inputs that would make the valuation meaningless.
+
+    A price of zero or below breaks the upside calculation and the market-value equity
+    weight in the WACC (negative equity weights), so it is refused with a clear message.
+    """
+    if not math.isfinite(price) or price <= 0:
+        raise ValueError(f"Share price must be a positive number, got {price}")
+    if not math.isfinite(beta) or not MIN_BETA <= beta <= MAX_BETA:
+        raise ValueError(
+            f"Beta {beta} is outside the plausible range {MIN_BETA} to {MAX_BETA}; "
+            "check market.beta / --beta"
+        )
+
+
 def resolve_quote(
     ticker: str,
     provider: MarketDataProvider | None,
@@ -73,8 +94,10 @@ def resolve_quote(
     """Combine YAML overrides with provider data. Overrides always take precedence.
 
     If both price and beta are overridden, the provider is never called (fully offline).
+    The combined values are checked by ``validate_quote`` before they are used.
     """
     if price_override is not None and beta_override is not None:
+        validate_quote(price_override, beta_override)
         return MarketQuote(
             ticker, price_override, beta_override, "manual override", date.today().isoformat()
         )
@@ -87,10 +110,7 @@ def resolve_quote(
     source = quote.source
     if price_override is not None or beta_override is not None:
         source += " + manual override"
-    return MarketQuote(
-        ticker=ticker,
-        price=price_override if price_override is not None else quote.price,
-        beta=beta_override if beta_override is not None else quote.beta,
-        source=source,
-        as_of=quote.as_of,
-    )
+    price = price_override if price_override is not None else quote.price
+    beta = beta_override if beta_override is not None else quote.beta
+    validate_quote(price, beta)
+    return MarketQuote(ticker=ticker, price=price, beta=beta, source=source, as_of=quote.as_of)
